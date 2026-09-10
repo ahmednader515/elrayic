@@ -1,0 +1,71 @@
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import localFont from 'next/font/local';
+import "./globals.css";
+import { Providers } from "@/components/providers";
+import { Footer } from "@/components/footer";
+import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const playpenSansArabic = localFont({
+  src: '../public/fonts/PlaypenSansArabic-VariableFont_wght.ttf',
+  variable: '--font-playpen-sans-arabic',
+  display: 'swap',
+  preload: true,
+});
+
+export const metadata: Metadata = {
+  title: {
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  keywords: [
+    "Elrayic",
+    "الرايق",
+    "د. حمدي الرايق",
+    "Dr Hamdi Elrayic",
+    "كورسات طبية",
+    "طب بشري",
+    "أسنان",
+    "علاج طبيعي",
+    "صيدلة",
+    "طب بيطري",
+    "تمريض",
+  ],
+  openGraph: {
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    siteName: SITE_NAME,
+  },
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html suppressHydrationWarning lang="ar" dir="rtl" className={`${geistSans.variable} ${geistMono.variable} ${playpenSansArabic.variable}`}>
+      <body suppressHydrationWarning className="font-playpen-sans-arabic">
+        <Providers>
+          <div className="min-h-screen flex flex-col">
+            <main className="flex-1">
+              {children}
+            </main>
+            <Footer />
+          </div>
+        </Providers>
+      </body>
+    </html>
+  );
+}
