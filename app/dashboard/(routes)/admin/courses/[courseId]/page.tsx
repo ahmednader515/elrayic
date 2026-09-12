@@ -60,11 +60,13 @@ export default async function AdminCourseIdPage({
     const hasGradeDivision = course.grade === "الكل" || 
         (course.grade && course.divisions && course.divisions.length > 0);
 
+    const hasPrice = course.price !== null && course.price !== undefined;
+
     const requiredFields = [
         course.title,
         course.description,
         course.imageUrl,
-        course.price,
+        hasPrice,
         course.chapters.some((chapter: { isPublished: boolean }) => chapter.isPublished),
         hasGradeDivision
     ];
@@ -81,7 +83,7 @@ export default async function AdminCourseIdPage({
         title: !!course.title,
         description: !!course.description,
         imageUrl: !!course.imageUrl,
-        price: course.price !== null && course.price !== undefined,
+        price: hasPrice,
         publishedChapters: course.chapters.some((chapter: { isPublished: boolean }) => chapter.isPublished),
         gradeDivision: hasGradeDivision
     };

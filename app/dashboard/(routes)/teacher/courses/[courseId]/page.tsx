@@ -59,11 +59,13 @@ export default async function CourseIdPage({
     const hasGradeDivision = course.grade === "الكل" || 
         (course.grade && course.divisions && course.divisions.length > 0);
 
+    const hasPrice = course.price !== null && course.price !== undefined;
+
     const requiredFields = [
         course.title,
         course.description,
         course.imageUrl,
-        course.price,
+        hasPrice,
         course.chapters.some(chapter => chapter.isPublished),
         hasGradeDivision
     ];
@@ -80,7 +82,7 @@ export default async function CourseIdPage({
         title: !!course.title,
         description: !!course.description,
         imageUrl: !!course.imageUrl,
-        price: course.price !== null && course.price !== undefined,
+        price: hasPrice,
         publishedChapters: course.chapters.some(chapter => chapter.isPublished),
         gradeDivision: hasGradeDivision
     };
