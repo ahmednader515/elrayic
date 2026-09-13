@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import {
   ABROAD_LOCATION,
+  isValidCohort,
   isValidCollege,
   isValidCollegeType,
   isValidGovernorate,
@@ -16,6 +17,7 @@ export async function POST(req: Request) {
       phoneNumber,
       grade,
       division,
+      cohort,
       studyType,
       governorate,
       password,
@@ -32,6 +34,10 @@ export async function POST(req: Request) {
 
     if (!division || !isValidCollegeType(division)) {
       return new NextResponse("Invalid college type", { status: 400 });
+    }
+
+    if (!cohort || !isValidCohort(cohort)) {
+      return new NextResponse("Invalid cohort", { status: 400 });
     }
 
     if (!studyType || !isValidStudyLocation(studyType)) {
@@ -64,6 +70,7 @@ export async function POST(req: Request) {
         phoneNumber,
         grade,
         division,
+        cohort,
         studyType,
         governorate: resolvedGovernorate,
         hashedPassword,

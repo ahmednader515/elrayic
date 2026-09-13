@@ -18,6 +18,16 @@ export const STUDY_LOCATIONS = ["داخل مصر", "خارج مصر"] as const;
 
 export const ABROAD_LOCATION = "خارج مصر";
 
+export const COHORTS = [
+  "الأولى",
+  "الثانية",
+  "الثالثة",
+  "الرابعة",
+  "الخامسة",
+  "السادسة",
+  "السابعة",
+] as const;
+
 export const GOVERNORATES = [
   "القاهرة",
   "الجيزة",
@@ -55,13 +65,60 @@ export const studyLocationOptions = STUDY_LOCATIONS.map((value) => ({
   label: value,
 }));
 export const governorateOptions = GOVERNORATES.map((value) => ({ value, label: value }));
+export const cohortOptions = COHORTS.map((value) => ({ value, label: value }));
 
-export function getCollegeTypeOptions(college?: string | null) {
+export function getCollegeTypeOptions(college?: string | null | string[]) {
+  if (Array.isArray(college)) {
+    return college.length > 0 ? collegeTypeOptions : [];
+  }
+
   if (!college || college === COURSE_GRADE_ALL) {
     return [];
   }
 
   return collegeTypeOptions;
+}
+
+export function getCourseFaculties(course: {
+  grade?: string | null;
+  grades?: string[] | null;
+}) {
+  if (course.grade === COURSE_GRADE_ALL) {
+    return { isAll: true, faculties: [] as string[] };
+  }
+
+  const faculties =
+    course.grades && course.grades.length > 0
+      ? course.grades
+      : course.grade
+        ? [course.grade]
+        : [];
+
+  return { isAll: false, faculties };
+}
+
+export function studentCourseVisibilityWhere(student: { grade: string; division?: string | null }) {
+  const facultyMatch = {
+    OR: [
+      { grades: { has: student.grade } },
+      { grade: student.grade },
+    ],
+  };
+
+  return {
+    OR: [
+      { grade: COURSE_GRADE_ALL },
+      student.division
+        ? {
+            AND: [
+              facultyMatch,
+              { divisions: { has: student.division } },
+            ],
+          }
+        : facultyMatch,
+      { grade: null },
+    ],
+  };
 }
 
 export function isValidCollege(value: string) {
@@ -78,4 +135,8 @@ export function isValidStudyLocation(value: string) {
 
 export function isValidGovernorate(value: string) {
   return value === ABROAD_LOCATION || (GOVERNORATES as readonly string[]).includes(value);
+}
+
+export function isValidCohort(value: string) {
+  return (COHORTS as readonly string[]).includes(value);
 }

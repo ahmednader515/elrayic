@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Course } from "@prisma/client";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,24 +9,42 @@ import { z } from "zod";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Pencil } from "lucide-react";
-import { COURSE_GRADE_ALL, collegeOptions, getCollegeTypeOptions } from "@/lib/academic";
+import {
+    COURSE_GRADE_ALL,
+    collegeOptions,
+    collegeTypeOptions,
+    getCourseFaculties,
+} from "@/lib/academic";
 
 const formSchema = z.object({
-    grade: z.string().optional(),
-    divisions: z.array(z.string()).optional(),
+    forAllFaculties: z.boolean(),
+    grades: z.array(z.string()),
+    divisions: z.array(z.string()),
 });
 
 interface CourseGradeDivisionFormProps {
-    initialData: Course & { divisions?: string[] };
+    initialData: Course & { grades?: string[]; divisions?: string[] };
     courseId: string;
 }
 
-const getDivisionOptions = (grade: string | null | undefined) => getCollegeTypeOptions(grade);
+const getInitialValues = (initialData: CourseGradeDivisionFormProps["initialData"]) => {
+    const { isAll, faculties } = getCourseFaculties(initialData);
+    const divisions = initialData.divisions && initialData.divisions.length > 0
+        ? initialData.divisions
+        : (initialData as { division?: string }).division
+            ? [(initialData as { division?: string }).division as string]
+            : [];
+
+    return {
+        forAllFaculties: isAll,
+        grades: faculties,
+        divisions,
+    };
+};
 
 export const CourseGradeDivisionForm = ({
     initialData,
@@ -35,49 +53,15 @@ export const CourseGradeDivisionForm = ({
     const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [selectedGrade, setSelectedGrade] = useState<string | null>(initialData.grade || null);
-
-    // Handle legacy division field (string) and new divisions field (array)
-    const initialDivisions = initialData.divisions && initialData.divisions.length > 0 
-        ? initialData.divisions 
-        : (initialData as any).division 
-            ? [(initialData as any).division]
-            : [];
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-            grade: initialData.grade || "",
-            divisions: initialDivisions,
-        },
+        defaultValues: getInitialValues(initialData),
     });
-
-    // Reset divisions when grade changes
-    const gradeValue = form.watch("grade");
-    useEffect(() => {
-        if (gradeValue !== selectedGrade) {
-            setSelectedGrade(gradeValue || null);
-            if (gradeValue === COURSE_GRADE_ALL) {
-                form.setValue("divisions", []);
-            } else if (gradeValue) {
-                form.setValue("divisions", []);
-            }
-        }
-    }, [gradeValue, selectedGrade, form]);
 
     const toggleEdit = () => {
         if (isEditing) {
-            // Reset form when canceling
-            const divisions = initialData.divisions && initialData.divisions.length > 0 
-                ? initialData.divisions 
-                : (initialData as any).division 
-                    ? [(initialData as any).division]
-                    : [];
-            form.reset({
-                grade: initialData.grade || "",
-                divisions: divisions,
-            });
-            setSelectedGrade(initialData.grade || null);
+            form.reset(getInitialValues(initialData));
         }
         setIsEditing((current) => !current);
     };
@@ -85,30 +69,23 @@ export const CourseGradeDivisionForm = ({
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
             setIsLoading(true);
-            
-            // Prepare data
-            const updateData: { grade?: string | null; divisions?: string[] } = {};
-            
-            if (values.grade && values.grade.trim() !== "" && values.grade !== COURSE_GRADE_ALL) {
-                updateData.grade = values.grade.trim();
-                updateData.divisions = values.divisions || [];
-            } else if (values.grade === COURSE_GRADE_ALL) {
-                updateData.grade = COURSE_GRADE_ALL;
-                updateData.divisions = [];
-            } else {
-                updateData.grade = null;
-                updateData.divisions = [];
-            }
-            
+
+            const updateData = values.forAllFaculties
+                ? { grade: COURSE_GRADE_ALL, grades: [], divisions: [] }
+                : {
+                    grade: values.grades[0] ?? null,
+                    grades: values.grades,
+                    divisions: values.divisions,
+                };
+
             const response = await axios.patch(`/api/courses/${courseId}`, updateData);
-            
+
             if (response.status === 200) {
                 toast.success("تم تحديث الكلية ونوعها");
                 toggleEdit();
                 router.refresh();
             }
         } catch (error: any) {
-            console.error("Error updating course grade/division:", error);
             const errorMessage = error?.response?.data?.error || error?.message || "حدث خطأ ما";
             toast.error(errorMessage);
         } finally {
@@ -116,24 +93,27 @@ export const CourseGradeDivisionForm = ({
         }
     };
 
-    const divisionOptions = getDivisionOptions(selectedGrade);
+    const selectedGrades = form.watch("grades") || [];
     const selectedDivisions = form.watch("divisions") || [];
+    const forAllFaculties = form.watch("forAllFaculties");
+    const { isAll, faculties } = getCourseFaculties(initialData);
 
-    const handleDivisionToggle = (divisionValue: string, checked: boolean) => {
-        const currentDivisions = form.getValues("divisions") || [];
-        if (checked) {
-            form.setValue("divisions", [...currentDivisions, divisionValue]);
-        } else {
-            form.setValue("divisions", currentDivisions.filter((d) => d !== divisionValue));
-        }
+    const handleFacultyToggle = (faculty: string, checked: boolean) => {
+        const current = form.getValues("grades") || [];
+        form.setValue("forAllFaculties", false);
+        form.setValue(
+            "grades",
+            checked ? [...current, faculty] : current.filter((value) => value !== faculty)
+        );
     };
 
-    // Display divisions for viewing
-    const displayDivisions = initialData.divisions && initialData.divisions.length > 0 
-        ? initialData.divisions 
-        : (initialData as any).division 
-            ? [(initialData as any).division]
-            : [];
+    const handleDivisionToggle = (divisionValue: string, checked: boolean) => {
+        const current = form.getValues("divisions") || [];
+        form.setValue(
+            "divisions",
+            checked ? [...current, divisionValue] : current.filter((value) => value !== divisionValue)
+        );
+    };
 
     return (
         <div className="mt-6 border bg-slate-100 rounded-md p-4">
@@ -155,23 +135,29 @@ export const CourseGradeDivisionForm = ({
                     <div className="text-sm">
                         <span className="font-medium">الكلية: </span>
                         <span className="text-muted-foreground">
-                            {initialData.grade === COURSE_GRADE_ALL ? "الكل (جميع الكليات)" : (initialData.grade || "غير محدد")}
+                            {isAll
+                                ? "الكل (جميع الكليات)"
+                                : faculties.length > 0
+                                    ? faculties.join("، ")
+                                    : "غير محدد"}
                         </span>
                     </div>
-                    {initialData.grade && initialData.grade !== COURSE_GRADE_ALL && (
+                    {!isAll && faculties.length > 0 && (
                         <div className="text-sm">
                             <span className="font-medium">نوع الكلية: </span>
                             <span className="text-muted-foreground">
-                                {displayDivisions.length > 0 ? displayDivisions.join(", ") : "غير محدد"}
+                                {(initialData.divisions?.length ?? 0) > 0
+                                    ? initialData.divisions.join("، ")
+                                    : "غير محدد"}
                             </span>
                         </div>
                     )}
-                    {initialData.grade === COURSE_GRADE_ALL && (
+                    {isAll && (
                         <div className="text-sm text-blue-600">
                             ℹ️ هذا الكورس متاح لجميع الكليات
                         </div>
                     )}
-                    {!initialData.grade && (
+                    {!isAll && faculties.length === 0 && (
                         <div className="text-sm text-orange-600">
                             ⚠️ يجب تحديد الكلية ونوعها لعرض الكورس للطلاب
                         </div>
@@ -183,55 +169,65 @@ export const CourseGradeDivisionForm = ({
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
                         <FormField
                             control={form.control}
-                            name="grade"
-                            render={({ field }) => (
+                            name="grades"
+                            render={() => (
                                 <FormItem>
-                                    <FormLabel>الكلية</FormLabel>
-                                    <Select
-                                        onValueChange={(value) => {
-                                            field.onChange(value);
-                                            setSelectedGrade(value);
-                                            form.setValue("divisions", []);
-                                        }}
-                                        value={field.value}
-                                        disabled={isLoading}
-                                    >
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="اختر الكلية" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value={COURSE_GRADE_ALL}>الكل (جميع الكليات)</SelectItem>
-                                            {collegeOptions.map((option) => (
-                                                <SelectItem key={option.value} value={option.value}>
+                                    <FormLabel>الكلية (يمكن اختيار أكثر من كلية)</FormLabel>
+                                    <div className="max-h-56 overflow-y-auto overscroll-contain rounded-md border bg-white p-3 space-y-2 touch-pan-y">
+                                        <div className="flex items-center space-x-2 space-x-reverse">
+                                            <Checkbox
+                                                id="faculty-all"
+                                                checked={forAllFaculties}
+                                                onCheckedChange={(checked) => {
+                                                    form.setValue("forAllFaculties", Boolean(checked));
+                                                    form.setValue("grades", []);
+                                                    form.setValue("divisions", []);
+                                                }}
+                                                disabled={isLoading}
+                                            />
+                                            <Label htmlFor="faculty-all" className="text-sm font-normal cursor-pointer">
+                                                الكل (جميع الكليات)
+                                            </Label>
+                                        </div>
+                                        {collegeOptions.map((option) => (
+                                            <div key={option.value} className="flex items-center space-x-2 space-x-reverse">
+                                                <Checkbox
+                                                    id={`faculty-${option.value}`}
+                                                    checked={selectedGrades.includes(option.value)}
+                                                    onCheckedChange={(checked) => {
+                                                        handleFacultyToggle(option.value, Boolean(checked));
+                                                    }}
+                                                    disabled={isLoading || forAllFaculties}
+                                                />
+                                                <Label
+                                                    htmlFor={`faculty-${option.value}`}
+                                                    className="text-sm font-normal cursor-pointer"
+                                                >
                                                     {option.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
 
-                        {selectedGrade && selectedGrade !== COURSE_GRADE_ALL && divisionOptions.length > 0 && (
+                        {!forAllFaculties && selectedGrades.length > 0 && (
                             <FormField
                                 control={form.control}
                                 name="divisions"
                                 render={() => (
                                     <FormItem>
-                                        <div className="mb-2">
-                                            <FormLabel>نوع الكلية (يمكن اختيار أكثر من نوع)</FormLabel>
-                                        </div>
+                                        <FormLabel>نوع الكلية (يمكن اختيار أكثر من نوع)</FormLabel>
                                         <div className="space-y-2">
-                                            {divisionOptions.map((option) => (
+                                            {collegeTypeOptions.map((option) => (
                                                 <div key={option.value} className="flex items-center space-x-2 space-x-reverse">
                                                     <Checkbox
                                                         id={`division-${option.value}`}
                                                         checked={selectedDivisions.includes(option.value)}
                                                         onCheckedChange={(checked) => {
-                                                            handleDivisionToggle(option.value, checked as boolean);
+                                                            handleDivisionToggle(option.value, Boolean(checked));
                                                         }}
                                                         disabled={isLoading}
                                                     />
@@ -250,15 +246,15 @@ export const CourseGradeDivisionForm = ({
                             />
                         )}
 
-                        {selectedGrade === COURSE_GRADE_ALL && (
+                        {forAllFaculties && (
                             <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-md border border-blue-200">
-                                ℹ️ عند اختيار "الكل"، سيظهر هذا الكورس لجميع الطلاب بغض النظر عن كلياتهم ونوعها.
+                                ℹ️ عند اختيار &quot;الكل&quot;، سيظهر هذا الكورس لجميع الطلاب بغض النظر عن كلياتهم ونوعها.
                             </div>
                         )}
 
                         <div className="flex items-center gap-x-2">
                             <Button
-                                disabled={isLoading || (selectedGrade && selectedGrade !== COURSE_GRADE_ALL && selectedDivisions.length === 0)}
+                                disabled={isLoading || (!forAllFaculties && (selectedGrades.length === 0 || selectedDivisions.length === 0))}
                                 type="submit"
                             >
                                 حفظ

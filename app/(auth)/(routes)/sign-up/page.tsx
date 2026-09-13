@@ -20,6 +20,7 @@ import {
 import { SITE_NAME, SITE_SLOGAN } from "@/lib/site";
 import {
   ABROAD_LOCATION,
+  cohortOptions,
   collegeOptions,
   collegeTypeOptions,
   governorateOptions,
@@ -36,6 +37,7 @@ export default function SignUpPage() {
     phoneNumber: "",
     grade: "",
     division: "",
+    cohort: "",
     studyType: "",
     governorate: "",
     password: "",
@@ -95,7 +97,7 @@ export default function SignUpPage() {
       return;
     }
 
-    if (!formData.grade || !formData.division || !formData.studyType) {
+    if (!formData.grade || !formData.division || !formData.cohort || !formData.studyType) {
       toast.error("برجاء استكمال بيانات التسجيل");
       setIsLoading(false);
       return;
@@ -256,6 +258,26 @@ export default function SignUpPage() {
                 </Select>
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="cohort">الفرقة</Label>
+              <Select
+                value={formData.cohort}
+                onValueChange={(value) => handleSelectChange("cohort", value)}
+                disabled={isLoading}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="اختر الفرقة" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[240px] overflow-y-auto">
+                  {cohortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="studyType">مكان الدراسة</Label>

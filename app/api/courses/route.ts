@@ -61,23 +61,20 @@ export async function GET(req: Request) {
     // Filter by student's grade and division if they're a regular user
     if (student && student.role === "USER" && student.grade && student.division) {
       whereClause.OR = [
-        // Courses for all grades (الكل)
         { grade: "الكل" },
-        // Courses matching student's grade and division (student's division must be in divisions array)
+        {
+          AND: [
+            { grades: { has: student.grade } },
+            { divisions: { has: student.division } },
+          ],
+        },
         {
           AND: [
             { grade: student.grade },
-            {
-              divisions: {
-                has: student.division
-              }
-            }
-          ]
+            { divisions: { has: student.division } },
+          ],
         },
-        // Old courses: no grade set yet (backward compatibility)
-        {
-          grade: null
-        }
+        { grade: null },
       ];
     }
 

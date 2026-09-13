@@ -15,6 +15,7 @@ export type Course = {
     isPublished: boolean;
     createdAt: Date;
     grade?: string | null;
+    grades?: string[];
     divisions?: string[];
 }
 
@@ -100,6 +101,11 @@ export const columns: ColumnDef<Course>[] = [
         header: () => <div className="text-right">الكلية ونوعها</div>,
         cell: ({ row }) => {
             const grade = row.original.grade;
+            const faculties = (row.original as any).grades?.length
+                ? (row.original as any).grades
+                : grade && grade !== "الكل"
+                    ? [grade]
+                    : [];
             const divisions = (row.original as any).divisions || [];
             const legacyDivision = (row.original as any).division;
             
@@ -110,7 +116,7 @@ export const columns: ColumnDef<Course>[] = [
                     ? [legacyDivision]
                     : [];
             
-            if (!grade) {
+            if (!grade && faculties.length === 0) {
                 return (
                     <Badge variant="secondary" className="text-xs">
                         ⚠️ غير محدد
@@ -128,7 +134,7 @@ export const columns: ColumnDef<Course>[] = [
             
             return (
                 <div className="text-sm">
-                    <div className="font-medium">{grade}</div>
+                    <div className="font-medium">{faculties.join("، ")}</div>
                     {displayDivisions.length > 0 ? (
                         <div className="text-muted-foreground text-xs">
                             {displayDivisions.join(", ")}

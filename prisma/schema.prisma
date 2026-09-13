@@ -20,6 +20,7 @@ model User {
   balance              Float                  @default(0)
   grade                String? // الكلية: طب بشري، أسنان، علاج طبيعي، صيدلة، ...
   division             String? // نوع الكلية: حكومية، أهلية، خاصة
+  cohort               String? // الفرقة: الأولى ... السابعة
   studyType            String? // مكان الدراسة: داخل مصر، خارج مصر
   governorate          String? // المحافظة أو خارج مصر
   createdAt            DateTime               @default(now())
@@ -41,7 +42,8 @@ model Course {
   imageUrl    String?  @db.Text
   price       Float?
   isPublished Boolean  @default(false)
-  grade       String? // الكلية: طب بشري، أسنان، ... أو الكل
+  grade       String? // الكلية: طب بشري، أسنان، ... أو الكل (للتوافق مع البيانات القديمة)
+  grades      String[] @default([]) // الكليات المختارة عند استهداف أكثر من كلية
   divisions   String[] @default([]) // نوع الكلية: حكومية، أهلية، خاصة
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

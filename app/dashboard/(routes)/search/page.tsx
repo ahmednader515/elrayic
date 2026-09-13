@@ -69,10 +69,9 @@ export default async function SearchPage({
         // 2. Courses with matching grade
         const gradeFilter = {
             OR: [
-                // Courses for all grades
                 { grade: "الكل" },
-                // Courses matching student's grade
-                { grade: user.grade }
+                { grade: user.grade },
+                { grades: { has: user.grade } },
             ]
         };
 

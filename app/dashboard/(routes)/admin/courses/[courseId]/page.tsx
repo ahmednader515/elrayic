@@ -55,9 +55,9 @@ export default async function AdminCourseIdPage({
         return redirect("/dashboard/admin/courses");
     }
 
-    // Check if grade/division is set
-    // Grade is complete if: grade is "الكل" OR (grade is set AND divisions array has at least one item)
-    const hasGradeDivision = course.grade === "الكل" || 
+    const hasMultipleFaculties = Array.isArray(course.grades) && course.grades.length > 0;
+    const hasGradeDivision = course.grade === "الكل" ||
+        (hasMultipleFaculties && course.divisions && course.divisions.length > 0) ||
         (course.grade && course.divisions && course.divisions.length > 0);
 
     const hasPrice = course.price !== null && course.price !== undefined;

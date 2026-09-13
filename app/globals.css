@@ -161,6 +161,20 @@ body,
     scrollbar-color: hsl(var(--muted)) transparent;
 }
 
+/* Radix Select: allow finger-scrolling on mobile */
+[data-radix-select-content] {
+  max-height: min(16rem, 45dvh) !important;
+  overflow: hidden !important;
+}
+
+[data-radix-select-viewport] {
+  max-height: min(16rem, 45dvh) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
 /* Ensure the font is applied to all text */
 * {
   font-family: var(--font-playpen-sans-arabic), system-ui, sans-serif;

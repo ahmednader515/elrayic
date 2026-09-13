@@ -109,14 +109,16 @@ export function AdminCoursesTable({ courses, onDeleted }: { courses: Course[]; o
                     </div>
                   </TableCell>
                   <TableCell>
-                    {course.grade ? (
+                    {course.grade || (course as any).grades?.length ? (
                       course.grade === "الكل" ? (
                         <div className="text-sm">
                           <div className="font-medium">الكل (جميع الكليات)</div>
                         </div>
                       ) : (
                         <div className="text-sm">
-                          <div className="font-medium">{course.grade}</div>
+                          <div className="font-medium">
+                            {((course as any).grades?.length ? (course as any).grades : [course.grade]).join("، ")}
+                          </div>
                           {(course as any).divisions && (course as any).divisions.length > 0 ? (
                             <div className="text-muted-foreground text-xs">
                               {(course as any).divisions.join(", ")}
