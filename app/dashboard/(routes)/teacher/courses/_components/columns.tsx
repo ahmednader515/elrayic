@@ -17,6 +17,7 @@ export type Course = {
     grade?: string | null;
     grades?: string[];
     divisions?: string[];
+    cohorts?: string[];
 }
 
 export const columns: ColumnDef<Course>[] = [
@@ -98,24 +99,24 @@ export const columns: ColumnDef<Course>[] = [
     },
     {
         id: "gradeDivision",
-        header: () => <div className="text-right">الكلية ونوعها</div>,
+        header: () => <div className="text-right">الكلية والفرقة</div>,
         cell: ({ row }) => {
             const grade = row.original.grade;
-            const faculties = (row.original as any).grades?.length
-                ? (row.original as any).grades
+            const faculties = row.original.grades?.length
+                ? row.original.grades
                 : grade && grade !== "الكل"
                     ? [grade]
                     : [];
-            const divisions = (row.original as any).divisions || [];
+            const divisions = row.original.divisions || [];
+            const cohorts = row.original.cohorts || [];
             const legacyDivision = (row.original as any).division;
-            
-            // Handle legacy single division field
-            const displayDivisions = divisions.length > 0 
-                ? divisions 
-                : legacyDivision 
+
+            const displayDivisions = divisions.length > 0
+                ? divisions
+                : legacyDivision
                     ? [legacyDivision]
                     : [];
-            
+
             if (!grade && faculties.length === 0) {
                 return (
                     <Badge variant="secondary" className="text-xs">
@@ -123,29 +124,39 @@ export const columns: ColumnDef<Course>[] = [
                     </Badge>
                 );
             }
-            
+
             if (grade === "الكل") {
                 return (
                     <div className="text-sm">
                         <div className="font-medium">الكل (جميع الكليات)</div>
+                        {cohorts.length > 0 && (
+                            <div className="text-muted-foreground text-xs">
+                                الفرقة: {cohorts.join("، ")}
+                            </div>
+                        )}
                     </div>
                 );
             }
-            
+
             return (
                 <div className="text-sm">
                     <div className="font-medium">{faculties.join("، ")}</div>
                     {displayDivisions.length > 0 ? (
                         <div className="text-muted-foreground text-xs">
-                            {displayDivisions.join(", ")}
+                            {displayDivisions.join("، ")}
                         </div>
                     ) : (
                         <Badge variant="secondary" className="text-xs mt-1">
                             ⚠️ غير محدد
                         </Badge>
                     )}
+                    {cohorts.length > 0 && (
+                        <div className="text-muted-foreground text-xs">
+                            الفرقة: {cohorts.join("، ")}
+                        </div>
+                    )}
                 </div>
             );
         },
     }
-]; 
+];

@@ -24,6 +24,7 @@ import { GraduationCap } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
     COURSE_GRADE_ALL,
+    cohortOptions,
     collegeOptions,
     collegeTypeOptions,
     getCourseFaculties,
@@ -33,10 +34,11 @@ const formSchema = z.object({
     forAllFaculties: z.boolean(),
     grades: z.array(z.string()),
     divisions: z.array(z.string()),
+    cohorts: z.array(z.string()),
 });
 
 interface EditGradeDivisionDialogProps {
-    course: Course & { grades?: string[]; divisions?: string[] };
+    course: Course & { grades?: string[]; divisions?: string[]; cohorts?: string[] };
 }
 
 const getInitialValues = (course: EditGradeDivisionDialogProps["course"]) => {
@@ -51,6 +53,7 @@ const getInitialValues = (course: EditGradeDivisionDialogProps["course"]) => {
         forAllFaculties: isAll,
         grades: faculties,
         divisions,
+        cohorts: course.cohorts || [],
     };
 };
 
@@ -75,17 +78,23 @@ export const EditGradeDivisionDialog = ({ course }: EditGradeDivisionDialogProps
             setIsLoading(true);
 
             const updateData = values.forAllFaculties
-                ? { grade: COURSE_GRADE_ALL, grades: [], divisions: [] }
+                ? {
+                    grade: COURSE_GRADE_ALL,
+                    grades: [],
+                    divisions: [],
+                    cohorts: values.cohorts,
+                }
                 : {
                     grade: values.grades[0] ?? null,
                     grades: values.grades,
                     divisions: values.divisions,
+                    cohorts: values.cohorts,
                 };
 
             const response = await axios.patch(`/api/courses/${course.id}`, updateData);
 
             if (response.status === 200) {
-                toast.success("تم تحديث الكلية ونوعها");
+                toast.success("تم تحديث الكلية والفرقة ونوعها");
                 setOpen(false);
                 router.refresh();
             }
@@ -110,6 +119,7 @@ export const EditGradeDivisionDialog = ({ course }: EditGradeDivisionDialogProps
 
     const selectedGrades = form.watch("grades") || [];
     const selectedDivisions = form.watch("divisions") || [];
+    const selectedCohorts = form.watch("cohorts") || [];
     const forAllFaculties = form.watch("forAllFaculties");
 
     const handleFacultyToggle = (faculty: string, checked: boolean) => {
@@ -129,18 +139,30 @@ export const EditGradeDivisionDialog = ({ course }: EditGradeDivisionDialogProps
         );
     };
 
+    const handleCohortToggle = (cohortValue: string, checked: boolean) => {
+        const current = form.getValues("cohorts") || [];
+        form.setValue(
+            "cohorts",
+            checked ? [...current, cohortValue] : current.filter((value) => value !== cohortValue)
+        );
+    };
+
+    const canSave = forAllFaculties
+        ? selectedCohorts.length > 0
+        : selectedGrades.length > 0 && selectedDivisions.length > 0 && selectedCohorts.length > 0;
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" title="تعديل الكلية ونوعها">
+                <Button variant="ghost" size="icon" title="تعديل الكلية والفرقة ونوعها">
                     <GraduationCap className="h-4 w-4" />
                 </Button>
             </DialogTrigger>
             <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-hidden sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>تعديل الكلية ونوعها</DialogTitle>
+                    <DialogTitle>تعديل الكلية والفرقة ونوعها</DialogTitle>
                     <DialogDescription>
-                        حدد كلية واحدة أو أكثر، أو اختر &quot;الكل&quot; لعرض الكورس لجميع الكليات.
+                        حدد كلية واحدة أو أكثر، والفرقة المستهدفة، أو اختر &quot;الكل&quot; لعرض الكورس لجميع الكليات.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -224,9 +246,40 @@ export const EditGradeDivisionDialog = ({ course }: EditGradeDivisionDialogProps
                             />
                         )}
 
+                        <FormField
+                            control={form.control}
+                            name="cohorts"
+                            render={() => (
+                                <FormItem>
+                                    <FormLabel>الفرقة (يمكن اختيار أكثر من فرقة)</FormLabel>
+                                    <div className="max-h-56 overflow-y-auto overscroll-contain rounded-md border p-3 space-y-2 touch-pan-y">
+                                        {cohortOptions.map((option) => (
+                                            <div key={option.value} className="flex items-center space-x-2 space-x-reverse">
+                                                <Checkbox
+                                                    id={`dialog-cohort-${option.value}`}
+                                                    checked={selectedCohorts.includes(option.value)}
+                                                    onCheckedChange={(checked) => {
+                                                        handleCohortToggle(option.value, Boolean(checked));
+                                                    }}
+                                                    disabled={isLoading}
+                                                />
+                                                <Label
+                                                    htmlFor={`dialog-cohort-${option.value}`}
+                                                    className="text-sm font-normal cursor-pointer"
+                                                >
+                                                    {option.label}
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
                         {forAllFaculties && (
                             <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-md border border-blue-200">
-                                ℹ️ عند اختيار &quot;الكل&quot;، سيظهر هذا الكورس لجميع الطلاب بغض النظر عن كلياتهم ونوعها.
+                                ℹ️ عند اختيار &quot;الكل&quot;، سيظهر هذا الكورس لجميع الطلاب بغض النظر عن كلياتهم ونوعها، حسب الفرق المحددة.
                             </div>
                         )}
 
@@ -241,7 +294,7 @@ export const EditGradeDivisionDialog = ({ course }: EditGradeDivisionDialogProps
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={isLoading || (!forAllFaculties && (selectedGrades.length === 0 || selectedDivisions.length === 0))}
+                                disabled={isLoading || !canSave}
                             >
                                 حفظ
                             </Button>

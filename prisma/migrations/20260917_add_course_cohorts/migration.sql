@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Course" ADD COLUMN "cohorts" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

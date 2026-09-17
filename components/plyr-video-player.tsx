@@ -80,12 +80,12 @@ export const PlyrVideoPlayer = ({
           "duration",
           "mute",
           "volume",
-          "captions",
           "settings",
           "pip",
           "airplay",
           "fullscreen"
         ],
+        captions: { active: false, update: false },
         settings: ["speed", "quality", "loop"],
         quality: {
           default: 720,
@@ -98,6 +98,7 @@ export const PlyrVideoPlayer = ({
           modestbranding: 1,
           controls: 0,
           iv_load_policy: 3,
+          cc_load_policy: 0,
           disablekb: 1,
           playsinline: 1
         },
@@ -108,6 +109,25 @@ export const PlyrVideoPlayer = ({
 
       const getYoutubeEmbedInstance = () => {
         return player?.media?.plyr?.embed ?? null;
+      };
+
+      const disableYoutubeCaptions = () => {
+        try {
+          const embed = getYoutubeEmbedInstance();
+          if (!embed) return;
+
+          if (typeof embed.unloadModule === "function") {
+            embed.unloadModule("captions");
+            embed.unloadModule("cc");
+          }
+
+          if (typeof embed.setOption === "function") {
+            embed.setOption("captions", "track", {});
+            embed.setOption("cc", "track", {});
+          }
+        } catch (error) {
+          console.error("Failed to disable YouTube captions:", error);
+        }
       };
 
       const disableYoutubeOverlayInteraction = () => {
@@ -316,12 +336,19 @@ export const PlyrVideoPlayer = ({
       if (videoType === "YOUTUBE") {
         player.on("ready", () => {
           disableYoutubeOverlayInteraction();
+          disableYoutubeCaptions();
           updateYoutubeQualityMenu();
         });
+        player.on("playing", disableYoutubeCaptions);
+        player.on("statechange", disableYoutubeCaptions);
         disableYoutubeOverlayInteraction();
+        disableYoutubeCaptions();
         updateYoutubeQualityMenu();
 
-        player.on("loadeddata", updateYoutubeQualityMenu);
+        player.on("loadeddata", () => {
+          disableYoutubeCaptions();
+          updateYoutubeQualityMenu();
+        });
         player.on("qualitychange", () => {
           const embed = getYoutubeEmbedInstance();
           if (!embed) return;

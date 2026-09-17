@@ -10,9 +10,14 @@ import { BookOpen, Clock, Users, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Course, Purchase } from "@prisma/client";
+import {
+    COURSE_GRADE_ALL,
+    hasStudentTargetingProfile,
+    studentCourseVisibilityWhere,
+} from "@/lib/academic";
 
 type CourseWithDetails = Course & {
-    chapters: { id: string }[];
+    chapters: { id: string; isFree: boolean }[];
     purchases: Purchase[];
     _count: {
         purchases: number;
@@ -34,68 +39,45 @@ export default async function SearchPage({
     const resolvedParams = await searchParams;
     const title = typeof resolvedParams.title === 'string' ? resolvedParams.title : '';
 
-    // Get user's grade and division for filtering (cached)
+    // Get user's grade, division, and cohort for filtering
     const user = await db.user.findUnique({
         where: { id: session.user.id },
-        select: { grade: true, division: true, role: true }
+        select: { grade: true, division: true, cohort: true, role: true }
     });
 
-    console.log("[SEARCH_PAGE] User data:", { 
-        userId: session.user.id, 
-        role: user?.role, 
-        grade: user?.grade, 
-        division: user?.division,
-        title 
-    });
+    const andConditions: any[] = [
+        { isPublished: true },
+    ];
 
-    // Build where clause - filter by user's grade if they're a student
-    let whereClause: any = {
-        isPublished: true,
-    };
-
-    // Add title filter if exists
     if (title) {
-        whereClause.title = {
-            contains: title,
-            mode: 'insensitive' as const
-        };
+        andConditions.push({
+            title: {
+                contains: title,
+                mode: 'insensitive' as const
+            }
+        });
     }
 
-    // Filter by student's grade if they're a regular user
-    // If user is teacher/admin, show all courses
-    if (user && user.role === "USER" && user.grade) {
-        // Build the filter for courses:
-        // 1. Courses with grade="الكل" - show to everyone
-        // 2. Courses with matching grade
-        const gradeFilter = {
-            OR: [
-                { grade: "الكل" },
-                { grade: user.grade },
-                { grades: { has: user.grade } },
-            ]
-        };
-
-        // Build AND clause to combine isPublished, title (if exists), and grade filter
-        const andConditions: any[] = [
-            { isPublished: true },
-            gradeFilter
-        ];
-
-        if (title) {
-            andConditions.push({
-                title: {
-                    contains: title,
-                    mode: 'insensitive' as const
-                }
-            });
+    // Students only see courses matching college, college type, and فرقة
+    // الكل courses ignore faculty and only require matching فرقة
+    if (user?.role === "USER") {
+        if (hasStudentTargetingProfile(user)) {
+            andConditions.push(
+                studentCourseVisibilityWhere({
+                    grade: user.grade!,
+                    division: user.division!,
+                    cohort: user.cohort!,
+                })
+            );
+        } else if (user.grade && user.division) {
+            // Profile missing فرقة: still show الكل courses
+            andConditions.push({ grade: COURSE_GRADE_ALL });
+        } else {
+            andConditions.push({ id: { in: [] } });
         }
-
-        whereClause = {
-            AND: andConditions
-        };
     }
 
-    console.log("[SEARCH_PAGE] Where clause:", JSON.stringify(whereClause, null, 2));
+    const whereClause = { AND: andConditions };
 
     const courses = await db.course.findMany({
         where: whereClause,
@@ -106,6 +88,7 @@ export default async function SearchPage({
                 },
                 select: {
                     id: true,
+                    isFree: true,
                 }
             },
             quizzes: {
@@ -131,17 +114,6 @@ export default async function SearchPage({
             createdAt: "desc",
         }
     });
-
-    console.log("[SEARCH_PAGE] Found courses:", courses.length);
-    if (courses.length > 0) {
-        console.log("[SEARCH_PAGE] Sample course:", {
-            id: courses[0].id,
-            title: courses[0].title,
-            grade: courses[0].grade,
-            division: courses[0].division,
-            isPublished: courses[0].isPublished
-        });
-    }
 
     // Batch all progress queries to avoid N+1 problem
     const allChapterIds = courses.flatMap(course => course.chapters.map(ch => ch.id));
@@ -253,7 +225,10 @@ export default async function SearchPage({
 
                 {/* Course Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {coursesWithProgress.map((course) => (
+                    {coursesWithProgress.map((course) => {
+                        const hasFreeLesson = course.chapters.some((chapter) => chapter.isFree);
+
+                        return (
                         <div
                             key={course.id}
                             className="group bg-card rounded-2xl overflow-hidden border shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
@@ -268,7 +243,7 @@ export default async function SearchPage({
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 
                                 {/* Course Status Badge */}
-                                <div className="absolute top-4 right-4">
+                                <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
                                     <div className={`rounded-full px-3 py-1 text-sm font-medium ${
                                         course.purchases.length > 0 
                                             ? "bg-green-500 text-white" 
@@ -276,6 +251,11 @@ export default async function SearchPage({
                                     }`}>
                                         {course.purchases.length > 0 ? "مشترك" : "متاح"}
                                     </div>
+                                    {hasFreeLesson && course.price !== 0 && (
+                                        <div className="rounded-full px-3 py-1 text-sm font-medium bg-emerald-500 text-white shadow-sm">
+                                            درس مجاني
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Price Badge */}
@@ -341,7 +321,8 @@ export default async function SearchPage({
                                 )}
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {/* Empty State */}
@@ -355,6 +336,8 @@ export default async function SearchPage({
                             <p className="text-muted-foreground mb-6">
                                 {title 
                                     ? "جرب البحث بكلمات مختلفة أو تصفح جميع الكورسات"
+                                    : user && user.role === "USER" && !user.cohort
+                                        ? "يرجى استكمال الفرقة في ملفك الشخصي لعرض الكورسات المناسبة"
                                     : user && user.role === "USER" && user.grade
                                         ? `لا توجد كورسات متاحة للكلية "${user.grade}" حالياً`
                                         : "سيتم إضافة كورسات جديدة قريباً"

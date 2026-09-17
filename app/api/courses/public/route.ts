@@ -1,6 +1,11 @@
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import {
+  COURSE_GRADE_ALL,
+  hasStudentTargetingProfile,
+  studentCourseVisibilityWhere,
+} from "@/lib/academic";
 
 export async function GET() {
   try {
@@ -15,36 +20,36 @@ export async function GET() {
       if (userId) {
         student = await db.user.findUnique({
           where: { id: userId },
-          select: { grade: true, division: true, role: true }
+          select: { grade: true, division: true, cohort: true, role: true }
         });
       }
     } catch (error) {
       // User not authenticated, continue without filtering
     }
 
-    // Build where clause - same filtering logic as main courses API
     const whereClause: any = {
       isPublished: true,
+      showOnHomepage: true,
     };
 
-    // Filter by student's grade and division if they're a regular user
-    if (student && student.role === "USER" && student.grade && student.division) {
-      whereClause.OR = [
-        { grade: "الكل" },
-        {
-          AND: [
-            { grades: { has: student.grade } },
-            { divisions: { has: student.division } },
-          ],
-        },
-        {
-          AND: [
-            { grade: student.grade },
-            { divisions: { has: student.division } },
-          ],
-        },
-        { grade: null },
-      ];
+    if (student?.role === "USER") {
+      if (hasStudentTargetingProfile(student)) {
+        whereClause.AND = [
+          { isPublished: true },
+          { showOnHomepage: true },
+          studentCourseVisibilityWhere({
+            grade: student.grade!,
+            division: student.division!,
+            cohort: student.cohort!,
+          }),
+        ];
+        delete whereClause.isPublished;
+        delete whereClause.showOnHomepage;
+      } else if (student.grade && student.division) {
+        whereClause.grade = COURSE_GRADE_ALL;
+      } else {
+        whereClause.id = { in: [] };
+      }
     }
 
     // Use select instead of include to only fetch needed fields

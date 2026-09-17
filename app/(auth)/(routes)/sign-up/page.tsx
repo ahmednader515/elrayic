@@ -35,6 +35,7 @@ export default function SignUpPage() {
   const [formData, setFormData] = useState({
     fullName: "",
     phoneNumber: "",
+    parentPhoneNumber: "",
     grade: "",
     division: "",
     cohort: "",
@@ -212,6 +213,21 @@ export default function SignUpPage() {
                 disabled={isLoading}
                 className="h-10"
                 value={formData.phoneNumber}
+                onChange={handleInputChange}
+                placeholder="+20XXXXXXXXXX"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="parentPhoneNumber">رقم هاتف ولي الأمر</Label>
+              <Input
+                id="parentPhoneNumber"
+                name="parentPhoneNumber"
+                type="tel"
+                autoComplete="tel"
+                disabled={isLoading}
+                className="h-10"
+                value={formData.parentPhoneNumber}
                 onChange={handleInputChange}
                 placeholder="+20XXXXXXXXXX"
               />

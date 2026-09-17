@@ -97,28 +97,50 @@ export function getCourseFaculties(course: {
   return { isAll: false, faculties };
 }
 
-export function studentCourseVisibilityWhere(student: { grade: string; division?: string | null }) {
-  const facultyMatch = {
-    OR: [
-      { grades: { has: student.grade } },
-      { grade: student.grade },
-    ],
-  };
-
+export function studentCourseVisibilityWhere(student: {
+  grade: string;
+  division: string;
+  cohort: string;
+}) {
   return {
     OR: [
-      { grade: COURSE_GRADE_ALL },
-      student.division
-        ? {
-            AND: [
-              facultyMatch,
-              { divisions: { has: student.division } },
+      // الكل: ignore faculty / نوع الكلية — only فرقة must match
+      {
+        AND: [
+          { grade: COURSE_GRADE_ALL },
+          { cohorts: { has: student.cohort } },
+        ],
+      },
+      // Specific faculties: الكلية + نوع الكلية + فرقة
+      {
+        AND: [
+          {
+            OR: [
+              { grades: { has: student.grade } },
+              { grade: student.grade },
             ],
-          }
-        : facultyMatch,
-      { grade: null },
+          },
+          { divisions: { has: student.division } },
+          { cohorts: { has: student.cohort } },
+        ],
+      },
     ],
   };
+}
+
+/** True when a student profile has the fields needed for course targeting. */
+export function hasStudentTargetingProfile(student: {
+  grade?: string | null;
+  division?: string | null;
+  cohort?: string | null;
+  role?: string | null;
+}) {
+  return (
+    student.role === "USER" &&
+    !!student.grade &&
+    !!student.division &&
+    !!student.cohort
+  );
 }
 
 export function isValidCollege(value: string) {

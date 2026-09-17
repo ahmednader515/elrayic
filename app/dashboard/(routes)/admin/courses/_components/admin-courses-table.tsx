@@ -88,7 +88,7 @@ export function AdminCoursesTable({ courses, onDeleted }: { courses: Course[]; o
               <TableHead className="text-right">السعر</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
               <TableHead className="text-right">انشئ في</TableHead>
-              <TableHead className="text-right">الكلية ونوعها</TableHead>
+              <TableHead className="text-right">الكلية والفرقة</TableHead>
               <TableHead className="text-right">الإجراءات</TableHead>
             </TableRow>
           </TableHeader>
@@ -113,6 +113,11 @@ export function AdminCoursesTable({ courses, onDeleted }: { courses: Course[]; o
                       course.grade === "الكل" ? (
                         <div className="text-sm">
                           <div className="font-medium">الكل (جميع الكليات)</div>
+                          {(course as any).cohorts?.length > 0 && (
+                            <div className="text-muted-foreground text-xs">
+                              الفرقة: {(course as any).cohorts.join("، ")}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="text-sm">
@@ -121,7 +126,7 @@ export function AdminCoursesTable({ courses, onDeleted }: { courses: Course[]; o
                           </div>
                           {(course as any).divisions && (course as any).divisions.length > 0 ? (
                             <div className="text-muted-foreground text-xs">
-                              {(course as any).divisions.join(", ")}
+                              {(course as any).divisions.join("، ")}
                             </div>
                           ) : (course as any).division ? (
                             <div className="text-muted-foreground text-xs">{(course as any).division}</div>
@@ -129,6 +134,11 @@ export function AdminCoursesTable({ courses, onDeleted }: { courses: Course[]; o
                             <Badge variant="secondary" className="text-xs mt-1">
                               ⚠️ غير محدد
                             </Badge>
+                          )}
+                          {(course as any).cohorts?.length > 0 && (
+                            <div className="text-muted-foreground text-xs">
+                              الفرقة: {(course as any).cohorts.join("، ")}
+                            </div>
                           )}
                         </div>
                       )

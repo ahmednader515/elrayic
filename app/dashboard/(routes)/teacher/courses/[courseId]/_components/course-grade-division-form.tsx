@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Pencil } from "lucide-react";
 import {
     COURSE_GRADE_ALL,
+    cohortOptions,
     collegeOptions,
     collegeTypeOptions,
     getCourseFaculties,
@@ -24,10 +25,11 @@ const formSchema = z.object({
     forAllFaculties: z.boolean(),
     grades: z.array(z.string()),
     divisions: z.array(z.string()),
+    cohorts: z.array(z.string()),
 });
 
 interface CourseGradeDivisionFormProps {
-    initialData: Course & { grades?: string[]; divisions?: string[] };
+    initialData: Course & { grades?: string[]; divisions?: string[]; cohorts?: string[] };
     courseId: string;
 }
 
@@ -43,6 +45,7 @@ const getInitialValues = (initialData: CourseGradeDivisionFormProps["initialData
         forAllFaculties: isAll,
         grades: faculties,
         divisions,
+        cohorts: initialData.cohorts || [],
     };
 };
 
@@ -71,17 +74,23 @@ export const CourseGradeDivisionForm = ({
             setIsLoading(true);
 
             const updateData = values.forAllFaculties
-                ? { grade: COURSE_GRADE_ALL, grades: [], divisions: [] }
+                ? {
+                    grade: COURSE_GRADE_ALL,
+                    grades: [],
+                    divisions: [],
+                    cohorts: values.cohorts,
+                }
                 : {
                     grade: values.grades[0] ?? null,
                     grades: values.grades,
                     divisions: values.divisions,
+                    cohorts: values.cohorts,
                 };
 
             const response = await axios.patch(`/api/courses/${courseId}`, updateData);
 
             if (response.status === 200) {
-                toast.success("تم تحديث الكلية ونوعها");
+                toast.success("تم تحديث الكلية والفرقة ونوعها");
                 toggleEdit();
                 router.refresh();
             }
@@ -95,8 +104,10 @@ export const CourseGradeDivisionForm = ({
 
     const selectedGrades = form.watch("grades") || [];
     const selectedDivisions = form.watch("divisions") || [];
+    const selectedCohorts = form.watch("cohorts") || [];
     const forAllFaculties = form.watch("forAllFaculties");
     const { isAll, faculties } = getCourseFaculties(initialData);
+    const savedCohorts = initialData.cohorts || [];
 
     const handleFacultyToggle = (faculty: string, checked: boolean) => {
         const current = form.getValues("grades") || [];
@@ -115,10 +126,22 @@ export const CourseGradeDivisionForm = ({
         );
     };
 
+    const handleCohortToggle = (cohortValue: string, checked: boolean) => {
+        const current = form.getValues("cohorts") || [];
+        form.setValue(
+            "cohorts",
+            checked ? [...current, cohortValue] : current.filter((value) => value !== cohortValue)
+        );
+    };
+
+    const canSave = forAllFaculties
+        ? selectedCohorts.length > 0
+        : selectedGrades.length > 0 && selectedDivisions.length > 0 && selectedCohorts.length > 0;
+
     return (
         <div className="mt-6 border bg-slate-100 rounded-md p-4">
             <div className="font-medium flex items-center justify-between">
-                الكلية ونوعها
+                الكلية والفرقة ونوعها
                 <Button onClick={toggleEdit} variant="ghost">
                     {isEditing ? (
                         <>إلغاء</>
@@ -147,19 +170,25 @@ export const CourseGradeDivisionForm = ({
                             <span className="font-medium">نوع الكلية: </span>
                             <span className="text-muted-foreground">
                                 {(initialData.divisions?.length ?? 0) > 0
-                                    ? initialData.divisions.join("، ")
+                                    ? initialData.divisions!.join("، ")
                                     : "غير محدد"}
                             </span>
                         </div>
                     )}
+                    <div className="text-sm">
+                        <span className="font-medium">الفرقة: </span>
+                        <span className="text-muted-foreground">
+                            {savedCohorts.length > 0 ? savedCohorts.join("، ") : "غير محدد"}
+                        </span>
+                    </div>
                     {isAll && (
                         <div className="text-sm text-blue-600">
                             ℹ️ هذا الكورس متاح لجميع الكليات
                         </div>
                     )}
-                    {!isAll && faculties.length === 0 && (
+                    {((!isAll && faculties.length === 0) || savedCohorts.length === 0) && (
                         <div className="text-sm text-orange-600">
-                            ⚠️ يجب تحديد الكلية ونوعها لعرض الكورس للطلاب
+                            ⚠️ يجب تحديد الكلية والفرقة ونوعها لعرض الكورس للطلاب
                         </div>
                     )}
                 </div>
@@ -246,15 +275,46 @@ export const CourseGradeDivisionForm = ({
                             />
                         )}
 
+                        <FormField
+                            control={form.control}
+                            name="cohorts"
+                            render={() => (
+                                <FormItem>
+                                    <FormLabel>الفرقة (يمكن اختيار أكثر من فرقة)</FormLabel>
+                                    <div className="max-h-56 overflow-y-auto overscroll-contain rounded-md border bg-white p-3 space-y-2 touch-pan-y">
+                                        {cohortOptions.map((option) => (
+                                            <div key={option.value} className="flex items-center space-x-2 space-x-reverse">
+                                                <Checkbox
+                                                    id={`cohort-${option.value}`}
+                                                    checked={selectedCohorts.includes(option.value)}
+                                                    onCheckedChange={(checked) => {
+                                                        handleCohortToggle(option.value, Boolean(checked));
+                                                    }}
+                                                    disabled={isLoading}
+                                                />
+                                                <Label
+                                                    htmlFor={`cohort-${option.value}`}
+                                                    className="text-sm font-normal cursor-pointer"
+                                                >
+                                                    {option.label}
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
                         {forAllFaculties && (
                             <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-md border border-blue-200">
-                                ℹ️ عند اختيار &quot;الكل&quot;، سيظهر هذا الكورس لجميع الطلاب بغض النظر عن كلياتهم ونوعها.
+                                ℹ️ عند اختيار &quot;الكل&quot;، سيظهر هذا الكورس لجميع الطلاب بغض النظر عن كلياتهم ونوعها، حسب الفرق المحددة.
                             </div>
                         )}
 
                         <div className="flex items-center gap-x-2">
                             <Button
-                                disabled={isLoading || (!forAllFaculties && (selectedGrades.length === 0 || selectedDivisions.length === 0))}
+                                disabled={isLoading || !canSave}
                                 type="submit"
                             >
                                 حفظ

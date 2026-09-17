@@ -42,9 +42,11 @@ model Course {
   imageUrl    String?  @db.Text
   price       Float?
   isPublished Boolean  @default(false)
+  showOnHomepage Boolean @default(true) // عرض الكورس في الصفحة الرئيسية
   grade       String? // الكلية: طب بشري، أسنان، ... أو الكل (للتوافق مع البيانات القديمة)
   grades      String[] @default([]) // الكليات المختارة عند استهداف أكثر من كلية
   divisions   String[] @default([]) // نوع الكلية: حكومية، أهلية، خاصة
+  cohorts     String[] @default([]) // الفرق المستهدفة: الأولى ... السابعة
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

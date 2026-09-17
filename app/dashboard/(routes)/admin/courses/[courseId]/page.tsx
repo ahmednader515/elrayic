@@ -8,6 +8,7 @@ import { DescriptionForm } from "@/app/dashboard/(routes)/teacher/courses/[cours
 import { ImageForm } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_components/image-form";
 import { PriceForm } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_components/price-form";
 import { CourseGradeDivisionForm } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_components/course-grade-division-form";
+import { HomepageForm } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_components/homepage-form";
 import { AdminCourseContentForm } from "./_components/admin-course-content-form";
 import { Banner } from "@/components/banner";
 import { Actions } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_components/actions";
@@ -56,9 +57,10 @@ export default async function AdminCourseIdPage({
     }
 
     const hasMultipleFaculties = Array.isArray(course.grades) && course.grades.length > 0;
-    const hasGradeDivision = course.grade === "الكل" ||
+    const hasCohorts = Array.isArray(course.cohorts) && course.cohorts.length > 0;
+    const hasGradeDivision = (course.grade === "الكل" ||
         (hasMultipleFaculties && course.divisions && course.divisions.length > 0) ||
-        (course.grade && course.divisions && course.divisions.length > 0);
+        (course.grade && course.divisions && course.divisions.length > 0)) && hasCohorts;
 
     const hasPrice = course.price !== null && course.price !== undefined;
 
@@ -130,7 +132,7 @@ export default async function AdminCourseIdPage({
                                     </div>
                                     <div className={`flex items-center gap-1 ${completionStatus.gradeDivision ? 'text-green-600' : 'text-red-600'}`}>
                                         <span>{completionStatus.gradeDivision ? '✓' : '✗'}</span>
-                                        <span>الكلية ونوعها</span>
+                                        <span>الكلية والفرقة</span>
                                     </div>
                                 </div>
                             </div>
@@ -163,6 +165,10 @@ export default async function AdminCourseIdPage({
                             courseId={course.id}
                         />
                         <CourseGradeDivisionForm
+                            initialData={course}
+                            courseId={course.id}
+                        />
+                        <HomepageForm
                             initialData={course}
                             courseId={course.id}
                         />

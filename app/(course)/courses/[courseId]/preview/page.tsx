@@ -299,38 +299,65 @@ export default function CoursePreviewPage({
                         <CardContent>
                             {sortedContent.length > 0 ? (
                                 <div className="space-y-2">
-                                    {sortedContent.map((item, index) => (
-                                        <div
-                                            key={item.id}
-                                            className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                                        >
-                                            <div className="flex-shrink-0">
-                                                {item.type === 'chapter' ? (
-                                                    <BookOpen className="h-5 w-5 text-blue-600" />
-                                                ) : (
-                                                    <FileQuestion className="h-5 w-5 text-green-600" />
-                                                )}
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium">{item.title}</span>
-                                                    {item.type === 'quiz' && (
-                                                        <Badge variant="secondary" className="text-xs">
-                                                            اختبار
-                                                        </Badge>
-                                                    )}
-                                                    {item.type === 'chapter' && item.isFree && (
-                                                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-                                                            مجاني
-                                                        </Badge>
+                                    {sortedContent.map((item, index) => {
+                                        const canOpenFreeLesson =
+                                            item.type === "chapter" && !!item.isFree;
+                                        const contentRow = (
+                                            <>
+                                                <div className="flex-shrink-0">
+                                                    {item.type === "chapter" ? (
+                                                        <BookOpen className="h-5 w-5 text-blue-600" />
+                                                    ) : (
+                                                        <FileQuestion className="h-5 w-5 text-green-600" />
                                                     )}
                                                 </div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-medium">{item.title}</span>
+                                                        {item.type === "quiz" && (
+                                                            <Badge variant="secondary" className="text-xs">
+                                                                اختبار
+                                                            </Badge>
+                                                        )}
+                                                        {canOpenFreeLesson && (
+                                                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                                                                مجاني
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    {canOpenFreeLesson && !hasAccess && (
+                                                        <p className="text-xs text-green-700 mt-1">
+                                                            اضغط للمعاينة مجاناً
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-muted-foreground">
+                                                    {index + 1}
+                                                </div>
+                                            </>
+                                        );
+
+                                        if (canOpenFreeLesson) {
+                                            return (
+                                                <Link
+                                                    key={item.id}
+                                                    href={`/courses/${courseId}/chapters/${item.id}`}
+                                                    className="flex items-center gap-3 p-3 border rounded-lg hover:bg-green-50 hover:border-green-200 transition-colors cursor-pointer"
+                                                >
+                                                    {contentRow}
+                                                </Link>
+                                            );
+                                        }
+
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                                            >
+                                                {contentRow}
                                             </div>
-                                            <div className="text-sm text-muted-foreground">
-                                                {index + 1}
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <p className="text-muted-foreground text-center py-8">

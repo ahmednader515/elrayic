@@ -9,6 +9,7 @@ import { ImageForm } from "./_components/image-form";
 import { PriceForm } from "./_components/price-form";
 import { CourseGradeDivisionForm } from "./_components/course-grade-division-form";
 import { CourseContentForm } from "./_components/course-content-form";
+import { HomepageForm } from "./_components/homepage-form";
 import { Banner } from "@/components/banner";
 import { Actions } from "./_components/actions";
 
@@ -56,9 +57,11 @@ export default async function CourseIdPage({
 
     const hasMultipleFaculties = Array.isArray((course as { grades?: string[] }).grades)
         && (course as { grades?: string[] }).grades!.length > 0;
-    const hasGradeDivision = course.grade === "الكل" ||
+    const hasCohorts = Array.isArray((course as { cohorts?: string[] }).cohorts)
+        && (course as { cohorts?: string[] }).cohorts!.length > 0;
+    const hasGradeDivision = (course.grade === "الكل" ||
         (hasMultipleFaculties && !!course.divisions?.length) ||
-        !!(course.grade && course.divisions?.length);
+        !!(course.grade && course.divisions?.length)) && hasCohorts;
 
     const hasPrice = course.price !== null && course.price !== undefined;
 
@@ -130,7 +133,7 @@ export default async function CourseIdPage({
                                     </div>
                                     <div className={`flex items-center gap-1 ${completionStatus.gradeDivision ? 'text-green-600' : 'text-red-600'}`}>
                                         <span>{completionStatus.gradeDivision ? '✓' : '✗'}</span>
-                                        <span>الكلية ونوعها</span>
+                                        <span>الكلية والفرقة</span>
                                     </div>
                                 </div>
                             </div>
@@ -163,6 +166,10 @@ export default async function CourseIdPage({
                             courseId={course.id}
                         />
                         <CourseGradeDivisionForm
+                            initialData={course}
+                            courseId={course.id}
+                        />
+                        <HomepageForm
                             initialData={course}
                             courseId={course.id}
                         />

@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     const {
       fullName,
       phoneNumber,
+      parentPhoneNumber,
       grade,
       division,
       cohort,
@@ -63,11 +64,14 @@ export async function POST(req: Request) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const normalizedParentPhone =
+      typeof parentPhoneNumber === "string" ? parentPhoneNumber.trim() : "";
 
     await db.user.create({
       data: {
         fullName,
         phoneNumber,
+        parentPhoneNumber: normalizedParentPhone || null,
         grade,
         division,
         cohort,
