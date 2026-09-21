@@ -53,6 +53,7 @@ export const PlyrVideoPlayer = ({
   // Initialize Plyr on mount/update and destroy on unmount
   useEffect(() => {
     let isCancelled = false;
+    let captionsTimer: number | null = null;
 
     async function setupPlayer() {
       const targetEl =
@@ -85,7 +86,7 @@ export const PlyrVideoPlayer = ({
           "airplay",
           "fullscreen"
         ],
-        captions: { active: false, update: false },
+        captions: { active: false, language: "en", update: false },
         settings: ["speed", "quality", "loop"],
         quality: {
           default: 720,
@@ -108,13 +109,22 @@ export const PlyrVideoPlayer = ({
       playerRef.current = player;
 
       const getYoutubeEmbedInstance = () => {
-        return player?.media?.plyr?.embed ?? null;
+        return player?.embed ?? player?.media?.plyr?.embed ?? null;
       };
+
+      let captionsHooked = false;
 
       const disableYoutubeCaptions = () => {
         try {
           const embed = getYoutubeEmbedInstance();
           if (!embed) return;
+
+          // YouTube loads the captions module after playback starts on public
+          // origins (Vercel). Unload it again whenever that module appears.
+          if (!captionsHooked && typeof embed.addEventListener === "function") {
+            captionsHooked = true;
+            embed.addEventListener("onApiChange", disableYoutubeCaptions);
+          }
 
           if (typeof embed.unloadModule === "function") {
             embed.unloadModule("captions");
@@ -123,7 +133,6 @@ export const PlyrVideoPlayer = ({
 
           if (typeof embed.setOption === "function") {
             embed.setOption("captions", "track", {});
-            embed.setOption("cc", "track", {});
           }
         } catch (error) {
           console.error("Failed to disable YouTube captions:", error);
@@ -334,6 +343,8 @@ export const PlyrVideoPlayer = ({
       };
 
       if (videoType === "YOUTUBE") {
+        captionsTimer = window.setInterval(disableYoutubeCaptions, 1000);
+
         player.on("ready", () => {
           disableYoutubeOverlayInteraction();
           disableYoutubeCaptions();
@@ -374,6 +385,9 @@ export const PlyrVideoPlayer = ({
 
     return () => {
       isCancelled = true;
+      if (captionsTimer) {
+        window.clearInterval(captionsTimer);
+      }
       if (playerRef.current && typeof playerRef.current.destroy === "function") {
         playerRef.current.destroy();
       }
