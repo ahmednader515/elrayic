@@ -9,6 +9,7 @@ import { ImageForm } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_
 import { PriceForm } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_components/price-form";
 import { CourseGradeDivisionForm } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_components/course-grade-division-form";
 import { HomepageForm } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_components/homepage-form";
+import { CourseDirectLink } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_components/course-direct-link";
 import { AdminCourseContentForm } from "./_components/admin-course-content-form";
 import { Banner } from "@/components/banner";
 import { Actions } from "@/app/dashboard/(routes)/teacher/courses/[courseId]/_components/actions";
@@ -197,6 +198,7 @@ export default async function AdminCourseIdPage({
                                 initialData={course}
                                 courseId={course.id}
                             />
+                            <CourseDirectLink courseId={course.id} />
                         </div>
                     </div>
                 </div>

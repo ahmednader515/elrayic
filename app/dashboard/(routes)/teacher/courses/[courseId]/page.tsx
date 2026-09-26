@@ -10,6 +10,7 @@ import { PriceForm } from "./_components/price-form";
 import { CourseGradeDivisionForm } from "./_components/course-grade-division-form";
 import { CourseContentForm } from "./_components/course-content-form";
 import { HomepageForm } from "./_components/homepage-form";
+import { CourseDirectLink } from "./_components/course-direct-link";
 import { Banner } from "@/components/banner";
 import { Actions } from "./_components/actions";
 
@@ -198,6 +199,7 @@ export default async function CourseIdPage({
                                 initialData={course}
                                 courseId={course.id}
                             />
+                            <CourseDirectLink courseId={course.id} />
                         </div>
                     </div>
                 </div>

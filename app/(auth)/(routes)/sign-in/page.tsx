@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,13 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, ChevronLeft } from "lucide-react";
 import Image from "next/image";
-import { getDashboardUrlByRole } from "@/lib/utils";
+import { getDashboardUrlByRole, getSafeInternalPath } from "@/lib/utils";
 import { SITE_NAME, SITE_SLOGAN } from "@/lib/site";
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = getSafeInternalPath(searchParams.get("callbackUrl"));
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -56,8 +58,8 @@ export default function SignInPage() {
       const userRole = sessionData?.user?.role || "USER";
       const dashboardUrl = getDashboardUrlByRole(userRole);
 
-      // Force a full reload to ensure fresh session on the dashboard
-      const target = `${dashboardUrl}?t=${Date.now()}`;
+      // Force a full reload so the course link can enroll and open the lesson
+      const target = callbackUrl || `${dashboardUrl}?t=${Date.now()}`;
       if (typeof window !== "undefined") {
         window.location.replace(target);
       } else {
@@ -175,7 +177,7 @@ export default function SignInPage() {
           <div className="text-center text-sm">
             <span className="text-muted-foreground">ليس لديك حساب؟ </span>
             <Link 
-              href="/sign-up" 
+              href={callbackUrl ? `/sign-up?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/sign-up"} 
               className="text-primary hover:underline transition-colors"
             >
               إنشاء حساب جديد

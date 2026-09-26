@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getSafeInternalPath } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,8 @@ import {
 
 export default function SignUpPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = getSafeInternalPath(searchParams.get("callbackUrl"));
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -118,7 +121,7 @@ export default function SignUpPage() {
 
       if (response.data.success) {
         toast.success("تم إنشاء الحساب بنجاح");
-        router.push("/sign-in");
+        router.push(callbackUrl ? `/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/sign-in");
       }
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -419,7 +422,7 @@ export default function SignUpPage() {
           <div className="text-center text-sm">
             <span className="text-muted-foreground">لديك حساب بالفعل؟ </span>
             <Link
-              href="/sign-in"
+              href={callbackUrl ? `/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/sign-in"}
               className="text-primary hover:underline transition-colors"
             >
               تسجيل الدخول

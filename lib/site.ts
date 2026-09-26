@@ -1,4 +1,5 @@
 export const SITE_NAME = "Elrayic";
+export const SITE_URL = "https://elrayic.vercel.app";
 
 export const TEACHER_NAME = "Dr Hamdi Elrayic";
 export const TEACHER_NAME_AR = "د. حمدي الرايق";

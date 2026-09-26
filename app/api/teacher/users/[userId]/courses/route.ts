@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function GET(
   req: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
+    const { userId } = await params;
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "TEACHER") {
+    if (session.user.role !== "TEACHER" && session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const user = await db.user.findUnique({
-      where: { id: params.userId, role: "USER" },
+      where: { id: userId, role: "USER" },
     });
 
     if (!user) {
@@ -26,7 +28,7 @@ export async function GET(
     }
 
     const purchases = await db.purchase.findMany({
-      where: { userId: params.userId, status: "ACTIVE" },
+      where: { userId, status: "ACTIVE" },
       include: {
         course: {
           select: {

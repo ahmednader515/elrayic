@@ -26,8 +26,18 @@ export default withAuth(
     // Add check for payment status page
     const isPaymentStatusPage = req.nextUrl.pathname.includes("/payment-status");
 
-    // If user is on auth page and is authenticated, redirect to appropriate dashboard
+    const callbackUrl = req.nextUrl.searchParams.get("callbackUrl");
+    const safeCallback =
+      callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")
+        ? callbackUrl
+        : null;
+
+    // If user is on auth page and is authenticated, continue to the saved course link
     if (isAuthPage && req.nextauth.token) {
+      if (safeCallback) {
+        return NextResponse.redirect(new URL(safeCallback, req.url));
+      }
+
       const userRole = req.nextauth.token?.role || "USER";
       const dashboardUrl = getDashboardUrlByRole(userRole);
       return NextResponse.redirect(new URL(dashboardUrl, req.url));
@@ -36,7 +46,12 @@ export default withAuth(
     // If user is not authenticated and trying to access protected routes
     // But exclude payment status page from this check
     if (!req.nextauth.token && !isAuthPage && !isPaymentStatusPage) {
-      return NextResponse.redirect(new URL("/sign-in", req.url), { status: 302 });
+      const signInUrl = new URL("/sign-in", req.url);
+      signInUrl.searchParams.set(
+        "callbackUrl",
+        `${req.nextUrl.pathname}${req.nextUrl.search}`
+      );
+      return NextResponse.redirect(signInUrl, { status: 302 });
     }
 
     // Check for admin routes

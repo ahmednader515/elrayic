@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Edit, Trash2, X } from "lucide-react";
+import { Search, Edit, Trash2, X, BookOpen, Download } from "lucide-react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale/ar";
 import { toast } from "sonner";
@@ -64,6 +64,11 @@ interface EditUserData {
     role: string;
 }
 
+interface PurchasedCourse {
+    id: string;
+    title: string;
+}
+
 const UsersPage = () => {
     const [staffUsers, setStaffUsers] = useState<User[]>([]);
     const [studentUsers, setStudentUsers] = useState<User[]>([]);
@@ -82,6 +87,55 @@ const UsersPage = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [hasMore, setHasMore] = useState(false);
     const [totalStudentCount, setTotalStudentCount] = useState(0);
+    const [coursesDialogUser, setCoursesDialogUser] = useState<User | null>(null);
+    const [purchasedCourses, setPurchasedCourses] = useState<PurchasedCourse[]>([]);
+    const [coursesLoading, setCoursesLoading] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+
+    const openPurchasedCourses = async (user: User) => {
+        setCoursesDialogUser(user);
+        setPurchasedCourses([]);
+        setCoursesLoading(true);
+
+        try {
+            const response = await fetch(`/api/teacher/users/${user.id}/courses`);
+            if (!response.ok) {
+                throw new Error("Failed to load courses");
+            }
+            const data = await response.json();
+            setPurchasedCourses(data.courses || []);
+        } catch (error) {
+            console.error("Error fetching purchased courses:", error);
+            toast.error("حدث خطأ في تحميل الكورسات");
+        } finally {
+            setCoursesLoading(false);
+        }
+    };
+
+    const handleExportStudents = async () => {
+        try {
+            setIsExporting(true);
+            const response = await fetch("/api/teacher/users/export");
+            if (!response.ok) {
+                throw new Error("Failed to export students");
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "students.xlsx";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Error exporting students:", error);
+            toast.error("حدث خطأ أثناء تنزيل الملف");
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     useEffect(() => {
         fetchStaffUsers();
@@ -508,11 +562,22 @@ const UsersPage = () => {
             {filteredStudentUsers.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-3">
                             <CardTitle>قائمة الطلاب</CardTitle>
-                            <span className="text-sm text-muted-foreground">
-                                إجمالي: {totalStudentCount} | معروض: {filteredStudentUsers.length}
-                            </span>
+                            <div className="flex items-center gap-3">
+                                <Button
+                                    onClick={handleExportStudents}
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isExporting}
+                                >
+                                    <Download className="h-4 w-4" />
+                                    {isExporting ? "جاري التنزيل..." : "تحميل Excel"}
+                                </Button>
+                                <span className="text-sm text-muted-foreground">
+                                    إجمالي: {totalStudentCount} | معروض: {filteredStudentUsers.length}
+                                </span>
+                            </div>
                         </div>
                         <div className="flex items-center space-x-2">
                             <Search className="h-4 w-4 text-muted-foreground" />
@@ -582,9 +647,20 @@ const UsersPage = () => {
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="outline">
-                                                {user._count.purchases}
-                                            </Badge>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline">
+                                                    {user._count.purchases}
+                                                </Badge>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => openPurchasedCourses(user)}
+                                                    disabled={user._count.purchases === 0}
+                                                >
+                                                    <BookOpen className="h-4 w-4 ml-1" />
+                                                    عرض
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                         <TableCell>
                                             {format(new Date(user.createdAt), "dd/MM/yyyy", { locale: ar })}
@@ -717,6 +793,41 @@ const UsersPage = () => {
                     </CardContent>
                 </Card>
             )}
+
+            <Dialog
+                open={!!coursesDialogUser}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setCoursesDialogUser(null);
+                        setPurchasedCourses([]);
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>الكورسات المشتراة</DialogTitle>
+                        <DialogDescription>
+                            {coursesDialogUser?.fullName}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="max-h-80 overflow-y-auto space-y-2">
+                        {coursesLoading ? (
+                            <p className="text-sm text-muted-foreground">جاري التحميل...</p>
+                        ) : purchasedCourses.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">لا توجد كورسات مشتراة</p>
+                        ) : (
+                            purchasedCourses.map((course) => (
+                                <div
+                                    key={course.id}
+                                    className="rounded-md border px-3 py-2 text-sm"
+                                >
+                                    {course.title}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {filteredStaffUsers.length === 0 && filteredStudentUsers.length === 0 && !loading && (
                 <Card>

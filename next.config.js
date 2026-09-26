@@ -24,7 +24,7 @@ const nextConfig = {
       },
     ],
   },
-  serverExternalPackages: ['@prisma/client', '@prisma/adapter-neon', '@neondatabase/serverless', 'ws', 'bcrypt'],
+  serverExternalPackages: ['@prisma/client', '@prisma/adapter-neon', '@neondatabase/serverless', 'ws', 'bcrypt', 'exceljs'],
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },

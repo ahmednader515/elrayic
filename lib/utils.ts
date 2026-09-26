@@ -150,3 +150,12 @@ export function getDashboardUrlByRole(role: string): string {
   console.log("🔍 Redirecting to dashboard URL:", dashboardUrl);
   return dashboardUrl;
 }
+
+/** Allow only same-site relative paths so login cannot redirect off-site. */
+export function getSafeInternalPath(value: string | null | undefined) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return null;
+  }
+
+  return value;
+}
