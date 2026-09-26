@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSafeInternalPath } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import {
   studyLocationOptions,
 } from "@/lib/academic";
 
-export default function SignUpPage() {
+function SignUpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = getSafeInternalPath(searchParams.get("callbackUrl"));
@@ -431,5 +431,13 @@ export default function SignUpPage() {
         </div>
       </div>
       </div>
+  );
+}
+
+export default function SignUpPageSuspense() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpPage />
+    </Suspense>
   );
 }

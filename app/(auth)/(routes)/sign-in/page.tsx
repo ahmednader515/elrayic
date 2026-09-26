@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/ui/loading-button";
@@ -14,7 +14,7 @@ import Image from "next/image";
 import { getDashboardUrlByRole, getSafeInternalPath } from "@/lib/utils";
 import { SITE_NAME, SITE_SLOGAN } from "@/lib/site";
 
-export default function SignInPage() {
+function SignInPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = getSafeInternalPath(searchParams.get("callbackUrl"));
@@ -186,5 +186,13 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPageSuspense() {
+  return (
+    <Suspense fallback={null}>
+      <SignInPage />
+    </Suspense>
   );
 } 

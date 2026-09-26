@@ -28,9 +28,9 @@ export const CourseDirectLink = ({ courseId }: CourseDirectLinkProps) => {
 
   return (
     <div className="mt-6 border bg-slate-100 rounded-md p-4">
-      <div className="font-medium mb-1">رابط الدرس الأول</div>
+      <div className="font-medium mb-1">رابط الكورس</div>
       <p className="text-xs text-muted-foreground mb-3">
-        يفتح أول درس ويسجّل الطالب في الكورس. إذا لم يكن مسجلاً للدخول، يسجّل الدخول ثم يُفتح الدرس مباشرة.
+        يفتح الكورس ويسجّل الطالب فيه. إذا لم يكن مسجلاً للدخول، يسجّل الدخول ثم يُفتح الكورس مباشرة.
       </p>
       <div className="flex items-center gap-2">
         <Input readOnly value={link} dir="ltr" className="bg-white text-left" />
