@@ -29,6 +29,7 @@ import { Pencil, Trash2, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EditGradeDivisionDialog } from "./edit-grade-division-dialog";
+import { CourseStudentsDialog } from "./course-students-dialog";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -151,6 +152,7 @@ export function CoursesTable<TData extends { id: string }, TValue>({
                                                     </Button>
                                                 </Link>
                                                 <EditGradeDivisionDialog course={row.original as any} />
+                                                <CourseStudentsDialog courseId={row.original.id} />
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <Button variant="ghost" size="icon" title="حذف الكورس">
@@ -210,4 +212,4 @@ export function CoursesTable<TData extends { id: string }, TValue>({
             </div>
         </div>
     );
-} 
+}

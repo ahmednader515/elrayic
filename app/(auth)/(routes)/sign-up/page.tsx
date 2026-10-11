@@ -279,8 +279,10 @@ function SignUpPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="cohort">الفرقة</Label>
+              <Label htmlFor="cohort">الفرقة (مطلوب)</Label>
               <Select
+                name="cohort"
+                required
                 value={formData.cohort}
                 onValueChange={(value) => handleSelectChange("cohort", value)}
                 disabled={isLoading}
@@ -414,7 +416,7 @@ function SignUpPage() {
             <Button
               type="submit"
               className="w-full h-10 bg-[#0083d3] hover:bg-[#0083d3]/90 text-white"
-              disabled={isLoading || !passwordChecks.isValid}
+              disabled={isLoading || !passwordChecks.isValid || !formData.cohort}
             >
               {isLoading ? "جاري إنشاء الحساب..." : "إنشاء حساب"}
             </Button>

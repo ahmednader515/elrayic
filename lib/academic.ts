@@ -8,6 +8,7 @@ export const COLLEGES = [
   "كلية العلوم الصحية",
   "معهد فني صحي",
   "معهد فني تمريض",
+  "معهد عالي علوم صحية",
 ] as const;
 
 export const COURSE_GRADE_ALL = "الكل";

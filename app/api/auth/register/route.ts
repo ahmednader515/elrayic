@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       return new NextResponse("Invalid college type", { status: 400 });
     }
 
-    if (!cohort || !isValidCohort(cohort)) {
+    if (typeof cohort !== "string" || !isValidCohort(cohort)) {
       return new NextResponse("Invalid cohort", { status: 400 });
     }
 

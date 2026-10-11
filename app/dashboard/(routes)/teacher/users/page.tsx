@@ -43,10 +43,12 @@ interface User {
     id: string;
     fullName: string;
     phoneNumber: string;
+    parentPhoneNumber?: string | null;
     role: string;
     balance: number;
     grade?: string | null;
     division?: string | null;
+    cohort?: string | null;
     studyType?: string | null;
     governorate?: string | null;
     createdAt: string;
@@ -328,6 +330,16 @@ const UsersPage = () => {
             <div>
                 <span className="text-foreground font-medium">نوع الكلية: </span>
                 {user.division || "غير محدد"}
+            </div>
+            <div>
+                <span className="text-foreground font-medium">الفرقة: </span>
+                {user.cohort || "غير محدد"}
+            </div>
+            <div>
+                <span className="text-foreground font-medium">رقم هاتف ولي الأمر: </span>
+                <span dir="ltr" className="inline-block">
+                    {user.parentPhoneNumber || "غير محدد"}
+                </span>
             </div>
             <div>
                 <span className="text-foreground font-medium">نوع الدراسة: </span>
