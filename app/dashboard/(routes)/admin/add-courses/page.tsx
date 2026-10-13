@@ -38,7 +38,7 @@ const AddCoursesPage = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [isSearching, setIsSearching] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
-    const [selectedCourse, setSelectedCourse] = useState<string>("");
+    const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<"add" | "delete">("add");
     const [isAddingCourse, setIsAddingCourse] = useState(false);
@@ -138,7 +138,7 @@ const AddCoursesPage = () => {
     };
 
     const handleAddCourse = async () => {
-        if (!selectedUser || !selectedCourse) {
+        if (!selectedUser || selectedCourses.length === 0) {
             toast.error("يرجى اختيار الطالب والكورس");
             return;
         }
@@ -150,17 +150,17 @@ const AddCoursesPage = () => {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ courseId: selectedCourse }),
+                body: JSON.stringify({ courseIds: selectedCourses }),
             });
 
             if (response.ok) {
-                toast.success("تم إضافة الكورس للطالب بنجاح");
+                toast.success("تم إضافة الكورسات للطالب بنجاح");
                 setIsDialogOpen(false);
                 setSelectedUser(null);
-                setSelectedCourse("");
+                setSelectedCourses([]);
             } else {
                 const error = await response.json();
-                toast.error(error.message || "حدث خطأ أثناء إضافة الكورس");
+                toast.error(error.error || error.message || "حدث خطأ أثناء إضافة الكورس");
             }
         } catch (error) {
             console.error("Error adding course:", error);
@@ -171,7 +171,7 @@ const AddCoursesPage = () => {
     };
 
     const handleDeleteCourse = async () => {
-        if (!selectedUser || !selectedCourse) {
+        if (!selectedUser || selectedCourses.length === 0) {
             toast.error("يرجى اختيار الطالب والكورس");
             return;
         }
@@ -181,12 +181,12 @@ const AddCoursesPage = () => {
             const res = await fetch(`/api/admin/users/${selectedUser.id}/add-course`, {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ courseId: selectedCourse })
+                body: JSON.stringify({ courseIds: selectedCourses })
             });
             if (res.ok) {
-                toast.success("تم حذف الكورس من الطالب بنجاح");
+                toast.success("تم حذف الكورسات من الطالب بنجاح");
                 setIsDialogOpen(false);
-                setSelectedCourse("");
+                setSelectedCourses([]);
                 setSelectedUser(null);
                 fetchUsers(true);
             } else {
@@ -274,7 +274,7 @@ const AddCoursesPage = () => {
                                                 onClick={() => {
                                                     setSelectedUser(user);
                                                     setDialogMode("add");
-                                                    setSelectedCourse("");
+                                                    setSelectedCourses([]);
                                                     setIsDialogOpen(true);
                                                 }}
                                             >
@@ -287,7 +287,7 @@ const AddCoursesPage = () => {
                                                 onClick={() => {
                                                     setSelectedUser(user);
                                                     setDialogMode("delete");
-                                                    setSelectedCourse("");
+                                                    setSelectedCourses([]);
                                                     setIsDialogOpen(true);
                                                 }}
                                             >
@@ -318,7 +318,7 @@ const AddCoursesPage = () => {
                 onOpenChange={(open) => {
                     if (!open) {
                         setIsDialogOpen(false);
-                        setSelectedCourse("");
+                        setSelectedCourses([]);
                         setSelectedUser(null);
                         setDialogMode("add");
                     }
@@ -336,7 +336,27 @@ const AddCoursesPage = () => {
                     </DialogHeader>
                     <div className="min-w-0 max-w-full space-y-4">
                         <div className="min-w-0 space-y-2">
-                            <label className="text-sm font-medium">اختر الكورس</label>
+                            <label className="text-sm font-medium">اختر الكورسات ({selectedCourses.length} محدد)</label>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isAddingCourse || isDeletingCourse || (dialogMode === "delete" ? ownedCourses : courses).length === 0}
+                                    onClick={() => setSelectedCourses((dialogMode === "delete" ? ownedCourses : courses).map((course) => course.id))}
+                                >
+                                    تحديد الكل
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={isAddingCourse || isDeletingCourse || selectedCourses.length === 0}
+                                    onClick={() => setSelectedCourses([])}
+                                >
+                                    إلغاء التحديد
+                                </Button>
+                            </div>
                             <div
                                 className="max-h-[min(16rem,45dvh)] min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain rounded-md border touch-pan-y"
                                 style={{ WebkitOverflowScrolling: "touch" }}
@@ -345,14 +365,17 @@ const AddCoursesPage = () => {
                                     <button
                                         key={course.id}
                                         type="button"
-                                        onClick={() => setSelectedCourse(course.id)}
+                                        disabled={isAddingCourse || isDeletingCourse}
+                                        aria-pressed={selectedCourses.includes(course.id)}
+                                        onClick={() => setSelectedCourses((current) => current.includes(course.id) ? current.filter((id) => id !== course.id) : [...current, course.id])}
                                         className={cn(
                                             "flex w-full min-w-0 max-w-full items-start justify-between gap-2 border-b px-3 py-2 text-right text-sm last:border-b-0",
-                                            selectedCourse === course.id
+                                            selectedCourses.includes(course.id)
                                                 ? "bg-accent text-accent-foreground"
                                                 : "hover:bg-muted"
                                         )}
                                     >
+                                        <span aria-hidden="true" className="shrink-0">{selectedCourses.includes(course.id) ? "☑" : "☐"}</span>
                                         <span className="min-w-0 flex-1 whitespace-normal break-words">{course.title}</span>
                                         {typeof course.price === "number" && (
                                             <Badge variant="outline" className="shrink-0">
@@ -368,7 +391,7 @@ const AddCoursesPage = () => {
                                 variant="outline"
                                 onClick={() => {
                                     setIsDialogOpen(false);
-                                    setSelectedCourse("");
+                                    setSelectedCourses([]);
                                     setSelectedUser(null);
                                     setDialogMode("add");
                                 }}
@@ -378,17 +401,17 @@ const AddCoursesPage = () => {
                             {dialogMode === "add" ? (
                                 <Button 
                                     onClick={handleAddCourse}
-                                    disabled={!selectedCourse || isAddingCourse}
+                                    disabled={selectedCourses.length === 0 || isAddingCourse}
                                 >
-                                    {isAddingCourse ? "جاري الإضافة..." : "إضافة الكورس"}
+                                    {isAddingCourse ? "جاري الإضافة..." : "إضافة الكورسات المحددة"}
                                 </Button>
                             ) : (
                                 <Button 
                                     variant="destructive"
                                     onClick={handleDeleteCourse}
-                                    disabled={!selectedCourse || isDeletingCourse}
+                                    disabled={selectedCourses.length === 0 || isDeletingCourse}
                                 >
-                                    {isDeletingCourse ? "جاري الحذف..." : "حذف الكورس"}
+                                    {isDeletingCourse ? "جاري الحذف..." : "حذف الكورسات المحددة"}
                                 </Button>
                             )}
                         </div>

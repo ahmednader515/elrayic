@@ -10,6 +10,7 @@ import { BookOpen, Clock, Users, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Course, Purchase } from "@prisma/client";
+import { getCourseDisplayEnrollmentCount } from "@/lib/course-display";
 import {
     COURSE_GRADE_ALL,
     hasStudentTargetingProfile,
@@ -286,7 +287,7 @@ export default async function SearchPage({
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Users className="h-4 w-4" />
-                                            <span className="whitespace-nowrap">{course._count.purchases} طالب</span>
+                                            <span className="whitespace-nowrap">{getCourseDisplayEnrollmentCount(course.id)} طالب</span>
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Clock className="h-4 w-4" />

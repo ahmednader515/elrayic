@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_SLOGAN, TEACHER_NAME, TEACHER_NAME_AR } from "@/lib/site";
 import { FloatingSocialButtons } from "@/components/floating-social-buttons";
+import { getCourseDisplayEnrollmentCount } from "@/lib/course-display";
 
 // Define types based on Prisma schema
 type Course = {
@@ -384,7 +385,7 @@ export default function HomePage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4" />
-                          <span>{course.enrollmentCount ?? 0} طالب مسجل</span>
+                          <span>{getCourseDisplayEnrollmentCount(course.id)} طالب مسجل</span>
                         </div>
                       </div>
                       <Button 
