@@ -24,6 +24,7 @@ export async function GET(
         const quiz = await db.quiz.findUnique({
             where: { id: resolvedParams.quizId },
             include: {
+                courses: { select: { id: true, title: true } },
                 course: {
                     select: {
                         id: true,
@@ -83,7 +84,7 @@ export async function PATCH(
     try {
         const { userId, user } = await auth();
         const resolvedParams = await params;
-        const { title, description, questions, position, timer, courseId, maxAttempts } = await req.json();
+        const { title, description, questions, position, timer, courseId, courseIds: requestedCourseIds, isFree, maxAttempts } = await req.json();
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -95,7 +96,7 @@ export async function PATCH(
 
         const currentQuiz = await db.quiz.findUnique({
             where: { id: resolvedParams.quizId },
-            select: { courseId: true, position: true }
+            select: { courseId: true, position: true, courses: { select: { id: true } } }
         });
 
         if (!currentQuiz) {
@@ -103,7 +104,15 @@ export async function PATCH(
         }
 
         // Use the courseId from request if provided, otherwise use current quiz's courseId
-        const targetCourseId = courseId || currentQuiz.courseId;
+        const courseIds = requestedCourseIds ?? (courseId ? [courseId] : [currentQuiz.courseId, ...currentQuiz.courses.map(course => course.id)]);
+        if (!Array.isArray(courseIds) || !courseIds.length || courseIds.some(id => typeof id !== "string" || !id.trim()) || (isFree !== undefined && typeof isFree !== "boolean")) {
+            return NextResponse.json({ error: "Select at least one course and a valid free setting" }, { status: 400 });
+        }
+        const uniqueCourseIds = [...new Set<string>(courseIds)];
+        if (await db.course.count({ where: { id: { in: uniqueCourseIds } } }) !== uniqueCourseIds.length) {
+            return NextResponse.json({ error: "Course not found" }, { status: 404 });
+        }
+        const targetCourseId = uniqueCourseIds[0];
 
         // Validate required fields
         if (!title || !title.trim()) {
@@ -160,65 +169,61 @@ export async function PATCH(
         // Note: Position reordering is now handled by the separate reorder API
         // This API just updates the quiz with the provided position
 
-        // Update the quiz without questions first
-        const updatedQuiz = await db.quiz.update({
-            where: {
-                id: resolvedParams.quizId
-            },
-            data: {
-                title,
-                description,
-                courseId: targetCourseId, // Update courseId if changed
-                position: Number(quizPosition), // Explicitly cast to number
-                timer: timer || null,
-                maxAttempts: maxAttempts && maxAttempts > 0 ? Number(maxAttempts) : 1, // Use provided maxAttempts or default to 1
-            },
-            include: {
-                course: {
-                    select: {
-                        title: true
-                    }
+        await db.$transaction(async tx => {
+            const existingQuestions = await tx.question.findMany({
+                where: { quizId: resolvedParams.quizId },
+            });
+            const existingIds = new Set(existingQuestions.map(question => question.id));
+            const retainedIds = questions
+                .filter((question: { id?: string }) => question.id && existingIds.has(question.id))
+                .map((question: { id: string }) => question.id);
+
+            await tx.quiz.update({
+                where: { id: resolvedParams.quizId },
+                data: {
+                    title,
+                    description,
+                    courseId: targetCourseId,
+                    isFree,
+                    courses: { set: uniqueCourseIds.map(id => ({ id })) },
+                    position: Number(quizPosition),
+                    timer: timer || null,
+                    maxAttempts: maxAttempts && maxAttempts > 0 ? Number(maxAttempts) : 1,
+                },
+            });
+
+            // Preserve existing question IDs so course/access edits retain submitted answers.
+            await tx.question.deleteMany({
+                where: { quizId: resolvedParams.quizId, id: { notIn: retainedIds } },
+            });
+            for (const [index, question] of questions.entries()) {
+                const validOptions = question.type === "MULTIPLE_CHOICE"
+                    ? question.options.filter((option: string) => option && option.trim() !== "")
+                    : [];
+                const data = {
+                    text: question.text,
+                    type: question.type,
+                    options: question.type === "MULTIPLE_CHOICE" ? stringifyQuizOptions(question.options) : null,
+                    correctAnswer: question.type === "MULTIPLE_CHOICE" ? validOptions[question.correctAnswer] : question.correctAnswer,
+                    points: question.points,
+                    imageUrl: question.imageUrl || null,
+                    position: index + 1,
+                };
+                if (question.id && existingIds.has(question.id)) {
+                    const existing = existingQuestions.find(existing => existing.id === question.id);
+                    const changed = Object.entries(data).some(([key, value]) => existing?.[key as keyof typeof existing] !== value);
+                    if (changed) await tx.question.update({ where: { id: question.id }, data });
+                } else {
+                    await tx.question.create({ data: { ...data, quizId: resolvedParams.quizId } });
                 }
             }
-        });
-
-        // Delete existing questions
-        await db.question.deleteMany({
-            where: {
-                quizId: resolvedParams.quizId
-            }
-        });
-
-        // Add questions separately
-        if (questions.length > 0) {
-            await db.question.createMany({
-                data: questions.map((question: any, index: number) => {
-                    let correctAnswerValue = question.correctAnswer;
-                    
-                    // For multiple choice questions, convert index to actual option value
-                    if (question.type === "MULTIPLE_CHOICE") {
-                        const validOptions = question.options.filter((option: string) => option && option.trim() !== "");
-                        correctAnswerValue = validOptions[question.correctAnswer];
-                    }
-                    
-                    return {
-                        text: question.text,
-                        type: question.type,
-                        options: question.type === "MULTIPLE_CHOICE" ? stringifyQuizOptions(question.options) : null,
-                        correctAnswer: correctAnswerValue,
-                        points: question.points,
-                        imageUrl: question.imageUrl || null,
-                        quizId: resolvedParams.quizId,
-                        position: index + 1
-                    };
-                })
-            });
-        }
+        }, { timeout: 30000 });
 
         // Fetch the updated quiz with questions
         const quizWithQuestions = await db.quiz.findUnique({
             where: { id: resolvedParams.quizId },
             include: {
+                courses: { select: { id: true, title: true } },
                 course: {
                     select: {
                         title: true

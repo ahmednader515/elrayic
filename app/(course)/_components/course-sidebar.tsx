@@ -183,7 +183,7 @@ export const CourseSidebar = ({ course }: CourseSidebarProps) => {
                   <span className="ml-2 text-xs text-red-600">(بث مباشر)</span>
                 )}
               </span>
-              {content.type === 'chapter' && content.isFree && (
+              {(content.type === 'chapter' || content.type === 'quiz') && content.isFree && (
                 <span className="ml-4 px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-800 rounded-full">
                   مجاني
                 </span>

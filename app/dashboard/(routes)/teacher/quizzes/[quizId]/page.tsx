@@ -14,6 +14,8 @@ interface Quiz {
     title: string;
     description: string;
     courseId: string;
+    courses?: { id: string; title: string }[];
+    isFree?: boolean;
     position: number;
     isPublished: boolean;
     course: {
@@ -151,7 +153,7 @@ const QuizViewPage = ({ params }: { params: Promise<{ quizId: string }> }) => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <h4 className="font-medium mb-1">الكورس</h4>
-                                    <Badge variant="outline">{quiz.course.title}</Badge>
+                                    <Badge variant="outline">{(quiz.courses?.length ? quiz.courses.map(course => course.title).join("، ") : quiz.course.title)}</Badge>
                                 </div>
                                 <div>
                                     <h4 className="font-medium mb-1">الموقع</h4>

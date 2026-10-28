@@ -19,6 +19,7 @@ export async function GET(req: Request) {
 
         const quizzes = await db.quiz.findMany({
             include: {
+                courses: { select: { id: true, title: true } },
                 course: {
                     select: {
                         id: true,
@@ -65,7 +66,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const { userId, user } = await auth();
-        const { title, description, courseId, questions, position, timer, maxAttempts } = await req.json();
+        const { title, description, courseId: legacyCourseId, courseIds: requestedCourseIds, isFree = false, questions, position, timer, maxAttempts } = await req.json();
 
         console.log("Received position:", position, "Type:", typeof position);
 
@@ -78,23 +79,17 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Title is required" }, { status: 400 });
         }
 
-        if (!courseId) {
-            return NextResponse.json({ error: "Course ID is required" }, { status: 400 });
-        }
-
-        // Verify the course belongs to the teacher
-        const course = await db.course.findUnique({
-            where: {
-                id: courseId,
-            }
-        });
-
-        if (!course) {
-            return NextResponse.json({ error: "Course not found" }, { status: 404 });
-        }
-
         if (!isStaff(user?.role)) {
-            return NextResponse.json({ error: "Unauthorized to create quiz for this course" }, { status: 403 });
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        const courseIds = requestedCourseIds ?? (legacyCourseId ? [legacyCourseId] : []);
+        if (!Array.isArray(courseIds) || !courseIds.length || courseIds.some(id => typeof id !== "string" || !id.trim()) || typeof isFree !== "boolean") {
+            return NextResponse.json({ error: "Select at least one course and a valid free setting" }, { status: 400 });
+        }
+        const uniqueCourseIds = [...new Set<string>(courseIds)];
+        const courseId = uniqueCourseIds[0];
+        if (await db.course.count({ where: { id: { in: uniqueCourseIds } } }) !== uniqueCourseIds.length) {
+            return NextResponse.json({ error: "Course not found" }, { status: 404 });
         }
 
         // Get the next position if not provided
@@ -172,61 +167,13 @@ export async function POST(req: Request) {
             description,
             position: Number(quizPosition), // Explicitly cast to number
             courseId,
+            isFree,
+            courses: { connect: uniqueCourseIds.map(id => ({ id })) },
+            isPublished: true,
             timer: timer || null, // Timer in minutes, null means no time limit
             maxAttempts: finalMaxAttempts, // Use provided maxAttempts or default to 1
-                            questions: {
-                    create: questions.map((question: any, index: number) => {
-                        let correctAnswerValue = question.correctAnswer;
-                        
-                        // For multiple choice questions, convert index to actual option value
-                        if (question.type === "MULTIPLE_CHOICE") {
-                            const validOptions = question.options.filter((option: string) => option && option.trim() !== "");
-                            correctAnswerValue = validOptions[question.correctAnswer];
-                        }
-                        
-                        return {
-                            text: question.text,
-                            type: question.type,
-                            options: question.type === "MULTIPLE_CHOICE" ? stringifyQuizOptions(question.options) : null,
-                            correctAnswer: correctAnswerValue,
-                            points: question.points,
-                            imageUrl: question.imageUrl || null,
-                            position: index + 1
-                        };
-                    })
-                }
-        };
-        
-        console.log("Final quiz data:", JSON.stringify(quizData, null, 2));
-        
-        // Try creating the quiz without questions first
-        const quizDataWithoutQuestions = {
-            title,
-            description,
-            position: Number(quizPosition),
-            courseId,
-            timer: timer || null,
-            maxAttempts: finalMaxAttempts, // Use provided maxAttempts or default to 1
-            isPublished: true
-        };
-        
-        console.log("Quiz data without questions:", JSON.stringify(quizDataWithoutQuestions, null, 2));
-        
-        const quiz = await db.quiz.create({
-            data: quizDataWithoutQuestions,
-            include: {
-                course: {
-                    select: {
-                        title: true
-                    }
-                }
-            }
-        });
-        
-        // Now add the questions separately
-        if (questions.length > 0) {
-            await db.question.createMany({
-                data: questions.map((question: any, index: number) => {
+            questions: {
+                create: questions.map((question: any, index: number) => {
                     let correctAnswerValue = question.correctAnswer;
                     
                     // For multiple choice questions, convert index to actual option value
@@ -242,17 +189,21 @@ export async function POST(req: Request) {
                         correctAnswer: correctAnswerValue,
                         points: question.points,
                         imageUrl: question.imageUrl || null,
-                        quizId: quiz.id,
                         position: index + 1
                     };
                 })
-            });
-        }
+            }
+        };
+
+        console.log("Final quiz data:", JSON.stringify(quizData, null, 2));
         
+        const quiz = await db.quiz.create({ data: quizData });
+
         // Fetch the quiz with questions
         const quizWithQuestions = await db.quiz.findUnique({
             where: { id: quiz.id },
             include: {
+                courses: { select: { id: true, title: true } },
                 course: {
                     select: {
                         title: true

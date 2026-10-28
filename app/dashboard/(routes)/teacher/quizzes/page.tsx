@@ -15,6 +15,8 @@ interface Quiz {
     title: string;
     description: string;
     courseId: string;
+    courses?: { id: string; title: string }[];
+    isFree?: boolean;
     position: number;
     isPublished: boolean;
     course: {
@@ -91,7 +93,7 @@ const QuizzesPage = () => {
 
     const filteredQuizzes = quizzes.filter(quiz =>
         quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        quiz.course.title.toLowerCase().includes(searchTerm.toLowerCase())
+        (quiz.courses?.length ? quiz.courses.map(course => course.title).join("، ") : quiz.course.title).toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (loading) {
@@ -145,10 +147,11 @@ const QuizzesPage = () => {
                                 <TableRow key={quiz.id}>
                                     <TableCell className="font-medium">
                                         {quiz.title}
+                                        {quiz.isFree && <Badge variant="outline" className="mr-2">مجاني</Badge>}
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="outline">
-                                            {quiz.course.title}
+                                            {(quiz.courses?.length ? quiz.courses.map(course => course.title).join("، ") : quiz.course.title)}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>

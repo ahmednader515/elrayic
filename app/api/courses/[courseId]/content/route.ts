@@ -1,3 +1,4 @@
+import { quizInCourse } from "@/lib/quiz-access";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
@@ -12,7 +13,7 @@ export async function GET(
 
         // Check if user has purchased the course and get course data
         let hasAccess = false;
-        let coursePrice = 0;
+
         
         if (userId) {
             const course = await db.course.findUnique({
@@ -33,7 +34,7 @@ export async function GET(
 
             // Free courses are always accessible, but we still check purchase
             if (course) {
-                coursePrice = course.price;
+
                 hasAccess = course.price === 0 || course.purchases.length > 0;
             }
         }
@@ -45,29 +46,29 @@ export async function GET(
                     courseId: resolvedParams.courseId,
                     isPublished: true
                 },
-                include: hasAccess && userId ? {
+                include: {
                     userProgress: {
                         where: {
-                            userId
+                            userId: userId || "",
                         },
                         select: {
                             isCompleted: true
                         }
                     }
-                } : undefined,
+                },
                 orderBy: {
                     position: "asc"
                 }
             }),
             db.quiz.findMany({
                 where: {
-                    courseId: resolvedParams.courseId,
+                    ...quizInCourse(resolvedParams.courseId),
                     isPublished: true
                 },
-                include: hasAccess && userId ? {
+                include: {
                     quizResults: {
                         where: {
-                            studentId: userId
+                            studentId: userId || "",
                         },
                         select: {
                             id: true,
@@ -76,7 +77,7 @@ export async function GET(
                             percentage: true
                         }
                     }
-                } : undefined,
+                },
                 orderBy: {
                     position: "asc"
                 }
@@ -134,7 +135,7 @@ export async function GET(
                 ...quiz,
                 type: 'quiz' as const,
                 // Only include quizResults if user has access
-                quizResults: hasAccess ? quiz.quizResults : undefined
+                quizResults: hasAccess || quiz.isFree ? quiz.quizResults : undefined
             })),
             ...activeLiveStreams.map(livestream => ({
                 ...livestream,

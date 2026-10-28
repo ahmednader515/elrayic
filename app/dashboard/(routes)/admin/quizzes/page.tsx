@@ -15,6 +15,8 @@ interface Quiz {
   title: string;
   description: string;
   courseId: string;
+  courses?: { id: string; title: string }[];
+  isFree?: boolean;
   position: number;
   isPublished: boolean;
   course: { id: string; title: string };
@@ -49,7 +51,7 @@ export default function AdminQuizzesPage() {
   }, []);
 
   const filteredQuizzes = quizzes.filter((quiz) =>
-    [quiz.title, quiz.course.title].some((v) => v.toLowerCase().includes(searchTerm.toLowerCase()))
+    [quiz.title, (quiz.courses?.length ? quiz.courses.map(course => course.title).join("، ") : quiz.course.title)].some((v) => v.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleDelete = async (quizId: string, quizTitle: string) => {
@@ -125,9 +127,9 @@ export default function AdminQuizzesPage() {
             <TableBody>
               {filteredQuizzes.map((quiz) => (
                 <TableRow key={quiz.id}>
-                  <TableCell className="font-medium">{quiz.title}</TableCell>
+                  <TableCell className="font-medium">{quiz.title} {quiz.isFree && <Badge variant="outline">مجاني</Badge>}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{quiz.course.title}</Badge>
+                    <Badge variant="outline">{(quiz.courses?.length ? quiz.courses.map(course => course.title).join("، ") : quiz.course.title)}</Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{quiz.position}</Badge>

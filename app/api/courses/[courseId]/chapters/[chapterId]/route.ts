@@ -1,3 +1,4 @@
+import { quizInCourse } from "@/lib/quiz-access";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -62,7 +63,7 @@ export async function GET(
       }),
       db.quiz.findMany({
         where: {
-          courseId: courseId,
+          ...quizInCourse(courseId),
           isPublished: true
         },
         select: {

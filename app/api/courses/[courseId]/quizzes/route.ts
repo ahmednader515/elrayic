@@ -1,3 +1,4 @@
+import { quizInCourse } from "@/lib/quiz-access";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
@@ -17,7 +18,7 @@ export async function GET(
         // Get all quizzes for the specific course
         const quizzes = await db.quiz.findMany({
             where: {
-                courseId: resolvedParams.courseId
+                ...quizInCourse(resolvedParams.courseId)
             },
             include: {
                 course: {

@@ -171,10 +171,17 @@ export async function DELETE(
             return new NextResponse("Forbidden", { status: 403 });
         }
 
-        const deletedCourse = await db.course.delete({
-            where: {
-                id: resolvedParams.courseId,
-            },
+        const deletedCourse = await db.$transaction(async tx => {
+            const primaryQuizzes = await tx.quiz.findMany({
+                where: { courseId: resolvedParams.courseId },
+                select: { id: true, courses: { where: { id: { not: resolvedParams.courseId } }, select: { id: true }, orderBy: { id: "asc" } } },
+            });
+            for (const quiz of primaryQuizzes) {
+                if (quiz.courses[0]) {
+                    await tx.quiz.update({ where: { id: quiz.id }, data: { courseId: quiz.courses[0].id } });
+                }
+            }
+            return tx.course.delete({ where: { id: resolvedParams.courseId } });
         });
 
         return NextResponse.json(deletedCourse);

@@ -300,8 +300,9 @@ export default function CoursePreviewPage({
                             {sortedContent.length > 0 ? (
                                 <div className="space-y-2">
                                     {sortedContent.map((item, index) => {
+                                        const isFreeContent = !!item.isFree || isFree;
                                         const canOpenFreeLesson =
-                                            item.type === "chapter" && !!item.isFree;
+                                            (item.type === "chapter" || item.type === "quiz") && (isFreeContent || hasAccess);
                                         const contentRow = (
                                             <>
                                                 <div className="flex-shrink-0">
@@ -319,13 +320,13 @@ export default function CoursePreviewPage({
                                                                 اختبار
                                                             </Badge>
                                                         )}
-                                                        {canOpenFreeLesson && (
+                                                        {isFreeContent && (
                                                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                                                                 مجاني
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    {canOpenFreeLesson && !hasAccess && (
+                                                    {isFreeContent && !hasAccess && (
                                                         <p className="text-xs text-green-700 mt-1">
                                                             اضغط للمعاينة مجاناً
                                                         </p>
@@ -341,7 +342,7 @@ export default function CoursePreviewPage({
                                             return (
                                                 <Link
                                                     key={item.id}
-                                                    href={`/courses/${courseId}/chapters/${item.id}`}
+                                                    href={`/courses/${courseId}/${item.type === "quiz" ? "quizzes" : "chapters"}/${item.id}`}
                                                     className="flex items-center gap-3 p-3 border rounded-lg hover:bg-green-50 hover:border-green-200 transition-colors cursor-pointer"
                                                 >
                                                     {contentRow}

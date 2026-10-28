@@ -53,7 +53,8 @@ model Course {
   attachments Attachment[]
   chapters    Chapter[]
   purchases   Purchase[]
-  quizzes     Quiz[]
+  primaryQuizzes Quiz[] @relation("PrimaryQuizCourse")
+  quizzes Quiz[] @relation("SharedQuizCourses")
   liveStreams LiveStream[]
   promoCodes  PromoCode[]
 
@@ -167,7 +168,9 @@ model Quiz {
   timer       Int? // Timer in minutes, null means no time limit
   maxAttempts Int           @default(1) // Maximum number of attempts allowed
   courseId    String
-  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course      Course        @relation("PrimaryQuizCourse", fields: [courseId], references: [id], onDelete: Cascade)
+  isFree      Boolean       @default(false)
+  courses     Course[]      @relation("SharedQuizCourses")
   questions   Question[]
   quizResults QuizResult[]
   attempts    QuizAttempt[]

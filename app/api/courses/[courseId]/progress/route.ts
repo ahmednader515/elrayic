@@ -1,3 +1,4 @@
+import { quizInCourse } from "@/lib/quiz-access";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -24,7 +25,7 @@ export async function GET(
       }),
       db.quiz.count({
         where: {
-          courseId: resolvedParams.courseId,
+          ...quizInCourse(resolvedParams.courseId),
           isPublished: true,
         }
       })
@@ -48,7 +49,7 @@ export async function GET(
         where: {
             studentId: userId,
             quiz: {
-                courseId: resolvedParams.courseId,
+                ...quizInCourse(resolvedParams.courseId),
                 isPublished: true,
             }
         },

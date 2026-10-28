@@ -1,3 +1,4 @@
+import { canAccessQuiz, quizInCourse } from "@/lib/quiz-access";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
@@ -16,16 +17,7 @@ export async function GET(
         }
 
         // Check if user has access to the course
-        const purchase = await db.purchase.findUnique({
-            where: {
-                userId_courseId: {
-                    userId,
-                    courseId: resolvedParams.courseId
-                }
-            }
-        });
-
-        if (!purchase) {
+        if (!await canAccessQuiz(userId, resolvedParams.courseId, resolvedParams.quizId)) {
             return new NextResponse("Course access required", { status: 403 });
         }
 
@@ -33,7 +25,7 @@ export async function GET(
         const quiz = await db.quiz.findFirst({
             where: {
                 id: resolvedParams.quizId,
-                courseId: resolvedParams.courseId,
+                ...quizInCourse(resolvedParams.courseId),
                 isPublished: true
             },
             include: {
@@ -239,7 +231,7 @@ export async function PATCH(
         const updatedQuiz = await db.quiz.update({
             where: {
                 id: resolvedParams.quizId,
-                courseId: resolvedParams.courseId
+                ...quizInCourse(resolvedParams.courseId)
             },
             data: {
                 title,
@@ -298,7 +290,7 @@ export async function DELETE(
         const quiz = await db.quiz.findUnique({
             where: {
                 id: resolvedParams.quizId,
-                courseId: resolvedParams.courseId
+                ...quizInCourse(resolvedParams.courseId)
             }
         });
 
@@ -309,7 +301,7 @@ export async function DELETE(
         await db.quiz.delete({
             where: {
                 id: resolvedParams.quizId,
-                courseId: resolvedParams.courseId
+                ...quizInCourse(resolvedParams.courseId)
             }
         });
 

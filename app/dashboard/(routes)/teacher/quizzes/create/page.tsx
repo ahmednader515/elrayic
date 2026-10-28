@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, GripVertical, X, Mic } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, Trash2, GripVertical, X, Mic, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { usePathname, useRouter } from "next/navigation";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -32,6 +33,8 @@ interface Quiz {
     title: string;
     description: string;
     courseId: string;
+    courses?: { id: string; title: string }[];
+    isFree?: boolean;
     position: number;
     isPublished: boolean;
     course: {
@@ -68,6 +71,8 @@ const CreateQuizPage = () => {
         : "/dashboard/teacher/quizzes";
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourse, setSelectedCourse] = useState<string>("");
+    const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+    const [isFree, setIsFree] = useState(false);
     const [quizTitle, setQuizTitle] = useState("");
     const [quizDescription, setQuizDescription] = useState("");
     const [quizTimer, setQuizTimer] = useState<number | null>(null);
@@ -90,6 +95,7 @@ const CreateQuizPage = () => {
         const courseIdFromUrl = urlParams.get('courseId');
         if (courseIdFromUrl) {
             setSelectedCourse(courseIdFromUrl);
+            setSelectedCourses([courseIdFromUrl]);
             fetchCourseItems(courseIdFromUrl);
         }
     }, []);
@@ -347,6 +353,8 @@ const CreateQuizPage = () => {
                     title: quizTitle,
                     description: quizDescription,
                     courseId: selectedCourse,
+                    courseIds: selectedCourses,
+                    isFree,
                     questions: cleanedQuestions,
                     position: selectedPosition,
                     timer: quizTimer,
@@ -359,7 +367,7 @@ const CreateQuizPage = () => {
                 router.push(dashboardPath);
             } else {
                 const error = await response.json();
-                toast.error(error.message || "حدث خطأ أثناء إنشاء الاختبار");
+                toast.error(error.error || error.message || "حدث خطأ أثناء إنشاء الاختبار");
             }
         } catch (error) {
             console.error("Error creating quiz:", error);
@@ -429,27 +437,41 @@ const CreateQuizPage = () => {
             <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label>اختر الكورس</Label>
-                        <Select value={selectedCourse} onValueChange={(value) => {
-                            setSelectedCourse(value);
-                            // Clear previous data immediately
-                            setCourseItems([]);
-                            setSelectedPosition(1);
-                            if (value) {
-                                fetchCourseItems(value);
-                            }
-                        }}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="اختر كورس..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {courses.map((course) => (
-                                    <SelectItem key={course.id} value={course.id}>
-                                        {course.title}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Label htmlFor="quiz-courses">اختر الكورسات ({selectedCourses.length})</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button id="quiz-courses" type="button" variant="outline" className="w-full justify-between gap-2 font-normal">
+                                    <span className="min-w-0 truncate text-right">
+                                        {selectedCourses.length
+                                            ? selectedCourses.map(id => courses.find(course => course.id === id)?.title).filter(Boolean).join("، ") || ("تم اختيار " + selectedCourses.length + " كورس")
+                                            : "اختر الكورسات..."}
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" dir="rtl" className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-1">
+                                <div className="max-h-60 overflow-y-auto p-1 space-y-1">
+                                    {courses.map(course => (
+                                        <label key={course.id} className="flex items-center gap-2 cursor-pointer rounded-sm px-2 py-2 hover:bg-accent">
+                                            <input type="checkbox" checked={selectedCourses.includes(course.id)}
+                                                onChange={event => {
+                                                    const next = event.target.checked
+                                                        ? [...selectedCourses, course.id]
+                                                        : selectedCourses.filter(id => id !== course.id);
+                                                    setSelectedCourses(next);
+                                                    if (next[0] !== selectedCourse) {
+                                                        setSelectedCourse(next[0] || "");
+                                                        setCourseItems([]);
+                                                        if (next[0]) fetchCourseItems(next[0]);
+                                                    }
+                                                }} />
+                                            <span>{course.title}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                        <p className="text-sm text-muted-foreground">اختبار واحد مشترك في جميع الكورسات المحددة. ترتيب الاختبار موحد بينها، والمعاينة للكورس الأول.</p>
                     </div>
                     <div className="space-y-2">
                         <Label>عنوان الاختبار</Label>
@@ -469,6 +491,14 @@ const CreateQuizPage = () => {
                             placeholder="أدخل عنوان الاختبار"
                         />
                     </div>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={isFree} onChange={event => setIsFree(event.target.checked)} />
+                        <span>اختبار مجاني</span>
+                    </label>
+                    <p className="text-sm text-muted-foreground">عند التفعيل يمكن لأي طالب مسجل فتح الاختبار دون شراء الكورس. اختبارات الكورسات المجانية متاحة تلقائياً.</p>
                 </div>
 
                 {selectedCourse && (

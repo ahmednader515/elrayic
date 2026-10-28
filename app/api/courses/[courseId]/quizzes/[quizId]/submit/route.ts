@@ -1,3 +1,4 @@
+import { canAccessQuiz, quizInCourse } from "@/lib/quiz-access";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
@@ -17,16 +18,7 @@ export async function POST(
         }
 
         // Check if user has access to the course
-        const purchase = await db.purchase.findUnique({
-            where: {
-                userId_courseId: {
-                    userId,
-                    courseId: resolvedParams.courseId
-                }
-            }
-        });
-
-        if (!purchase) {
+        if (!await canAccessQuiz(userId, resolvedParams.courseId, resolvedParams.quizId)) {
             return new NextResponse("Course access required", { status: 403 });
         }
 
@@ -34,7 +26,7 @@ export async function POST(
         const quiz = await db.quiz.findFirst({
             where: {
                 id: resolvedParams.quizId,
-                courseId: resolvedParams.courseId,
+                ...quizInCourse(resolvedParams.courseId),
                 isPublished: true
             },
             include: {
